@@ -1,0 +1,5 @@
+# Copiar como .dev.vars SOLO para pruebas locales. Nunca subir secretos a Git.
+HEVY_API_KEY=""
+# Encabezados Authorization completos; usar dos valores aleatorios diferentes.
+HEVY_WEBHOOK_AUTH="Bearer reemplazar-por-secreto-aleatorio"
+READ_API_AUTH="Bearer reemplazar-por-otro-secreto-aleatorio"
