@@ -4,6 +4,7 @@
 - [Arquitectura](architecture/overview.md): datos, diagramas y decisiones que condicionan el proyecto.
 - [Operación](operations/runbook.md): comandos y qué revisar cuando falta un entrenamiento.
 - [Pendientes](backlog.md): siguientes pasos con un resultado comprobable.
+- [Documentación oficial de la API de Hevy](https://api.hevyapp.com/docs/): referencia para la integración con Hevy.
 
 ## Estado · 13 de noviembre de 2026
 
