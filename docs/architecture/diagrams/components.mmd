@@ -1,0 +1,11 @@
+%%{init: {"theme":"base","htmlLabels":false,"themeVariables":{"darkMode":false,"background":"#ffffff"}}}%%
+flowchart TB
+    H["Hevy"]
+    CLI["CLI local<br/>Rutinas e historial"]
+    Files["Archivos privados<br/>en tu computadora"]
+    Worker["Worker en Cloudflare<br/>Solo entrenos nuevos"]
+    D1[("D1<br/>Sesiones recibidas")]
+    Cron["Recuperación<br/>cada 5 minutos"]
+    H --> CLI --> Files
+    H --> Worker --> D1
+    Cron --> Worker
