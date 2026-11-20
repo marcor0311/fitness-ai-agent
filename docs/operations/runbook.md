@@ -6,6 +6,12 @@
 | --- | --- | --- |
 | Conectar Hevy | Raíz | `python3 -m fitness_agent setup` |
 | Descargar B, D y E | Raíz | `python3 -m fitness_agent sync` |
+| Descargar lo recibido por el webhook | Raíz | `python3 -m fitness_agent pull` |
+| Reportar entrenamientos nuevos | Raíz | `python3 -m fitness_agent report` |
+| Cambiar una rutina | Raíz | `routine export` → editar → `routine apply` → `--confirm` |
+| Ubicar máquinas en 3D | Raíz | `python3 -m fitness_agent gym space` |
+| Distancias y orden por cercanía | Raíz | `python3 -m fitness_agent gym graph` |
+| Ver el recorrido de cada rutina en 3D | Raíz | `python3 -m fitness_agent gym path` |
 | Pruebas Python | Raíz | `python3 -m unittest discover -s tests -v` |
 | Pruebas del receptor | `cloudflare/` | `npm test` |
 
@@ -26,6 +32,6 @@ El [README de Cloudflare](../../cloudflare/README.md) contiene despliegue, secre
 
 ## Al revisar rutinas
 
-Consultar las [preferencias](../business/training-preferences.md). `sync` reemplaza snapshot e informe y todavía no incorpora automáticamente `data/preferences.json`. El informe tampoco descuenta el Iso-Lateral omitido: distinguir sus dos series guardadas de las que se realizan.
+Consultar las [preferencias](../business/training-preferences.md). `sync` reemplaza snapshot e informe y aplica `data/preferences.json`: el Iso-Lateral figura como referencia y sus dos series no cuentan como previstas. Si se cambia una omisión en Hevy, actualizar también ese archivo; el informe avisa si una omisión ya no existe en la rutina.
 
-El CLI implementa solo lectura. Los cambios puntuales en Hevy deben conservar respaldo y verificarse con una nueva consulta; los respaldos están en `data/changes/`. No deducir progreso de una sola sesión o únicamente del tonelaje.
+Los cambios en Hevy se hacen con `routine apply`: primero sin `--confirm` para revisar las diferencias. Si informa que la rutina cambió desde la exportación, exportar de nuevo y repetir la edición. Los respaldos de `data/changes/` pueden borrarse cuando el resultado esté comprobado. No deducir progreso de una sola sesión o únicamente del tonelaje.

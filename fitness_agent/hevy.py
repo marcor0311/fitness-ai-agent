@@ -1,4 +1,4 @@
-"""Cliente de lectura de la API oficial. Sin dependencias externas."""
+"""Cliente de la API oficial. Lectura, y una única escritura: actualizar una rutina. Sin dependencias."""
 
 import json
 import time
@@ -16,6 +16,10 @@ ACTIVE_ROUTINES = (
 
 
 class HevyError(Exception):
+    pass
+
+
+class NotFound(HevyError):
     pass
 
 
@@ -61,10 +65,18 @@ class HevyClient:
         self.sleep = sleep
 
     def _get(self, path, **params):
+        return self._request("GET", path, **params)
+
+    def _request(self, method, path, body=None, **params):
         url = f"{self.BASE_URL}/{path}"
         if params:
             url += "?" + urlencode(params)
-        req = Request(url, headers={"api-key": self.api_key, "Accept": "application/json"}, method="GET")
+        headers = {"api-key": self.api_key, "Accept": "application/json"}
+        data = None
+        if body is not None:
+            data = json.dumps(body).encode()
+            headers["Content-Type"] = "application/json"
+        req = Request(url, data=data, headers=headers, method=method)
         for attempt in range(3):
             try:
                 with self.opener.open(req, timeout=30) as response:
@@ -75,14 +87,24 @@ class HevyClient:
             except HTTPError as exc:
                 status = exc.code
                 retry_after = exc.headers.get("Retry-After", "") if exc.headers else ""
+                detail = ""
+                if status in (400, 404) and method != "GET":
+                    try:
+                        detail = str(json.load(exc).get("error", ""))[:300]
+                    except (ValueError, AttributeError, OSError):
+                        detail = ""
                 exc.close()
+                # PUT es idempotente: repetirlo ante 429/5xx no duplica cambios.
                 if status in (429, 500, 502, 503, 504) and attempt < 2:
                     delay = min(int(retry_after), 30) if retry_after.isdigit() else 2 ** attempt
                     self.sleep(delay)
                     continue
                 if status in (401, 403):
                     raise HevyError("Hevy rechazó el acceso. Revisá la API key y tu suscripción Pro.") from None
-                raise HevyError(f"Error HTTP {status} al consultar Hevy.") from None
+                if status == 404:
+                    raise NotFound(f"Hevy no encontró {path.split('/')[0]} solicitado.") from None
+                suffix = f": {detail}" if detail else "."
+                raise HevyError(f"Error HTTP {status} al consultar Hevy{suffix}") from None
             except (URLError, TimeoutError, OSError):
                 if attempt < 2:
                     self.sleep(2 ** attempt)
@@ -91,12 +113,12 @@ class HevyClient:
             except (ValueError, UnicodeError):
                 raise HevyError("Hevy devolvió una respuesta JSON inválida.") from None
 
-    def _pages(self, resource):
+    def _pages(self, resource, page_size=10):
         result = []
         seen = set()
         page = 1
         while True:
-            payload = self._get(resource, page=page, pageSize=10)
+            payload = self._get(resource, page=page, pageSize=page_size)
             rows, count = payload.get(resource), payload.get("page_count")
             if (not isinstance(rows, list) or type(count) is not int
                     or count < 0 or count > 10000 or payload.get("page") != page):
@@ -120,5 +142,25 @@ class HevyClient:
     def workouts(self):
         return self._pages("workouts")
 
+    def exercise_templates(self):
+        """Catálogo completo de ejercicios, incluidos los personalizados. Hevy admite hasta 100 por página."""
+        return self._pages("exercise_templates", page_size=100)
+
     def exercise(self, template_id):
         return self._get("exercise_templates/" + quote(template_id, safe=""))
+
+    def workout(self, workout_id):
+        payload = self._get("workouts/" + quote(workout_id, safe=""))
+        return payload.get("workout", payload)
+
+    def routine(self, routine_id):
+        payload = self._get("routines/" + quote(routine_id, safe=""))
+        routine = payload.get("routine", payload)
+        if not isinstance(routine, dict) or routine.get("id") != routine_id:
+            raise HevyError("Hevy devolvió una rutina distinta de la solicitada.")
+        return routine
+
+    def update_routine(self, routine_id, body):
+        """Única operación de escritura. La llama solo routines.apply, tras validar versión y respaldo."""
+        payload = self._request("PUT", "routines/" + quote(routine_id, safe=""), body=body)
+        return payload.get("routine", payload)

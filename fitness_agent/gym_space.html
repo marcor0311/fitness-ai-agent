@@ -1,0 +1,1817 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Espacio del gimnasio</title>
+<style>
+  :root {
+    --bg: #f3f4f6; --panel: #ffffff; --text: #1b2029; --muted: #5f6774; --line: #dde1e7; --hover: #eef1f5;
+    --accent: #2f6fde; --accent-text: #ffffff; --danger: #c13d3d; --ok: #2f8a5b; --warn: #b4581c;
+    --scene: #dfe3e8; --floor: #c9cdd3; --grid: #b5bac2; --grid-strong: #9aa0aa;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121418; --panel: #1a1d23; --text: #e4e7ec; --muted: #9aa2ae; --line: #2b3038; --hover: #232830;
+      --accent: #5b8ff0; --accent-text: #0c1120; --danger: #e46a6a; --ok: #5cc28c; --warn: #f0a052;
+      --scene: #16191e; --floor: #5a6069; --grid: #6a717b; --grid-strong: #7f8792;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text); font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: grid; grid-template-rows: auto 1fr; overflow: hidden;
+  }
+  header {
+    display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--line);
+    background: var(--panel); flex-wrap: wrap;
+  }
+  header h1 { font-size: 15px; margin: 0 6px 0 0; font-weight: 600; }
+  header label { display: flex; align-items: center; gap: 4px; color: var(--muted); }
+  header input[type=number] { width: 64px; }
+  .spacer { flex: 1; }
+  #status { color: var(--muted); font-size: 12px; max-width: 48ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #status.error { color: var(--danger); }
+  #status.ok { color: var(--ok); }
+  main { display: grid; grid-template-columns: 300px 1fr 310px; min-height: 0; }
+  aside { background: var(--panel); overflow-y: auto; padding: 12px 12px 40px; min-height: 0; }
+  aside.left { border-right: 1px solid var(--line); }
+  aside.right { border-left: 1px solid var(--line); }
+  h2 { font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 16px 0 6px; font-weight: 600; }
+  h2:first-child { margin-top: 0; }
+  button {
+    font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--text);
+    border-radius: 6px; padding: 5px 10px; cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+  button.danger { color: var(--danger); }
+  button:disabled { opacity: .5; cursor: default; }
+  input, select { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 5px 7px; min-width: 0; }
+  input[type=checkbox] { width: auto; }
+  .search { width: 100%; margin-bottom: 8px; }
+  .machine {
+    display: grid; grid-template-columns: 72px 1fr; gap: 8px; align-items: center; width: 100%; text-align: left;
+    border: 1px solid transparent; background: transparent; padding: 4px; border-radius: 8px;
+  }
+  .machine:hover { background: var(--hover); border-color: var(--line); }
+  .machine img { width: 72px; height: 54px; border-radius: 6px; background: var(--hover); display: block; }
+  .machine .name { font-weight: 600; }
+  .machine .meta { color: var(--muted); font-size: 11.5px; }
+  .machine .match { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tag { display: inline-block; font-size: 10.5px; padding: 0 6px; border-radius: 99px; background: var(--hover); color: var(--muted); margin-left: 4px; font-weight: 500; }
+  .tag.mine { color: var(--accent); }
+  .tag.missing { color: var(--warn); }
+  details.category > summary { cursor: pointer; color: var(--muted); font-weight: 600; padding: 4px 0; list-style-position: outside; margin-left: 14px; }
+  .field { display: block; margin-bottom: 8px; }
+  .field > span { display: block; color: var(--muted); font-size: 11.5px; margin-bottom: 2px; }
+  .field input, .field select { width: 100%; }
+  .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 11.5px; }
+  .warn { color: var(--warn); }
+  .preview { width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; background: var(--hover); display: block; margin-bottom: 8px; }
+  .exercises { max-height: 320px; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; padding: 2px; }
+  .exercise { display: flex; gap: 6px; align-items: center; padding: 3px 4px; border-radius: 4px; }
+  .exercise:hover { background: var(--hover); }
+  .exercise input { width: auto; flex: none; }
+  .exercise img { width: 26px; height: 26px; border-radius: 4px; object-fit: cover; background: #fff; flex: none; }
+  .exercise span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .placed { list-style: none; padding: 0; margin: 0; }
+  .placed li { padding: 4px 6px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; gap: 6px; }
+  .placed li:hover { background: var(--hover); }
+  .placed li.selected { background: var(--hover); outline: 1px solid var(--accent); }
+  #view { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--scene); }
+  #view canvas { display: block; touch-action: none; }
+  #plan { position: absolute; inset: 0; cursor: crosshair; touch-action: none; }
+  .toolbar { z-index: 2; }
+  .hint { z-index: 2; }
+  .steps { margin: 0 0 10px; padding-left: 18px; }
+  .steps li { margin-bottom: 4px; }
+  .problem { color: var(--danger); border: 1px solid var(--danger); border-radius: 6px; padding: 6px 8px; font-weight: 600; }
+  .rooms { display: grid; gap: 4px; }
+  .room { display: grid; grid-template-columns: auto 1fr auto auto auto; gap: 6px; align-items: center; padding: 4px 6px; border-radius: 8px; border: 1px solid transparent; cursor: pointer; }
+  .room:hover { background: var(--hover); }
+  .room.active { border-color: var(--accent); background: var(--hover); }
+  .room input:not([type]) { min-width: 0; }
+  .room label { display: flex; gap: 3px; align-items: center; white-space: nowrap; }
+  .room button { padding: 2px 8px; }
+  .swatch.big { width: 16px; height: 16px; margin: 0; }
+  .labels { position: absolute; inset: 0; pointer-events: none; }
+  .label {
+    pointer-events: none; font-size: 11px; padding: 1px 6px; border-radius: 4px; white-space: nowrap;
+    background: color-mix(in srgb, var(--panel) 88%, transparent); color: var(--text); border: 1px solid var(--line);
+  }
+  .label.selected { border-color: var(--accent); font-weight: 600; }
+  .label.overlap { border-color: var(--warn); }
+  .label.axis { background: transparent; border: 0; color: var(--muted); }
+  .toolbar {
+    position: absolute; top: 10px; left: 10px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+    background: color-mix(in srgb, var(--panel) 92%, transparent); padding: 6px; border-radius: 8px; border: 1px solid var(--line);
+  }
+  .toolbar label { display: flex; gap: 4px; align-items: center; color: var(--muted); }
+  [hidden] { display: none !important; }
+  .toolbar .sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 2px; }
+  .toolbar button.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .toolbar .group { display: flex; gap: 6px; align-items: center; }
+  .walls { list-style: none; padding: 0; margin: 0 0 8px; }
+  .walls li { padding: 4px 6px; border-radius: 6px; cursor: pointer; }
+  .walls li:hover { background: var(--hover); }
+  .walls li.selected { background: var(--hover); outline: 1px solid var(--accent); }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
+  .check { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .check input { width: auto; }
+  .door { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; align-items: end; margin-bottom: 6px; }
+  .label.measure { font-size: 10.5px; padding: 0 4px; color: var(--muted); }
+  .hint { position: absolute; bottom: 8px; left: 10px; right: 10px; color: var(--muted); font-size: 11.5px; pointer-events: none; }
+  #fallback { position: absolute; inset: 0; display: none; place-items: center; text-align: center; padding: 24px; }
+  @media (max-width: 1100px) {
+    body { overflow: auto; }
+    main { grid-template-columns: 1fr; }
+    #view { height: 70vh; order: -1; }
+    aside { overflow: visible; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Espacio del gimnasio</h1>
+  <select id="gym-select" aria-label="Gimnasio"></select>
+  <button id="add-gym" title="Agregar otro gimnasio">+ Gimnasio</button>
+  <input id="gym-name" aria-label="Nombre del gimnasio" style="width:170px">
+  <span class="spacer"></span>
+  <span id="status">Cargando…</span>
+  <button id="save" class="primary" disabled>Guardar</button>
+</header>
+<main>
+  <aside class="left">
+    <h2>Máquinas de Hevy</h2>
+    <input id="search" class="search" type="search" placeholder="Buscar máquina o ejercicio (p. ej. leg press, triceps)">
+    <div id="pending"></div>
+    <div id="palette"></div>
+  </aside>
+  <section id="view">
+    <div class="toolbar">
+      <span class="group">
+        <button data-mode="machines" class="active" title="Ubicar y mover máquinas">Máquinas</button>
+        <button data-mode="shape" title="Pintar las salas y poner las puertas">Plano: salas y puertas</button>
+      </span>
+      <span class="sep"></span>
+      <span class="group">
+        <button id="undo" title="Deshacer (⌘/Ctrl+Z)" disabled>↶</button>
+        <button id="redo" title="Rehacer (⇧⌘/Ctrl+Shift+Z)" disabled>↷</button>
+      </span>
+      <span class="sep"></span>
+      <span id="machine-tools" class="group">
+        <button id="rotate" title="Girar 90° (R); Shift+R gira 15°">Girar 90°</button>
+      </span>
+      <span id="shape-tools" class="group" hidden>
+        <button data-zone="Máquinas" class="active" title="Arrastrá para dibujar el área de máquinas">Máquinas</button>
+        <button data-zone="Recepción" title="Arrastrá para dibujar la recepción (con paredes y puerta)">Recepción</button>
+        <button data-tool="erase" title="Arrastrá para quitar: huecos, columnas, rincones">Borrar</button>
+        <button data-tool="door" title="Tocá una pared para poner o quitar una puerta">Puerta</button>
+      </span>
+      <span id="view-tools" class="group">
+        <span class="sep"></span>
+        <button id="top-view">Vista superior</button>
+        <button id="frame">Encuadrar</button>
+        <label><input type="checkbox" id="snap" checked> Ajuste 0,1 m</label>
+        <label><input type="checkbox" id="labels" checked> Nombres</label>
+      </span>
+    </div>
+    <canvas id="plan" hidden></canvas>
+    <div class="hint" id="hint"></div>
+    <div id="fallback"><p>No se pudo cargar three.js desde el CDN. El espacio necesita internet para la librería 3D; tus datos siguen solo en este equipo.</p></div>
+  </section>
+  <aside class="right">
+    <div id="machine-panel">
+      <h2>Máquina seleccionada</h2>
+      <div id="selected"><p class="muted">Seleccioná una máquina en el plano o agregala desde la lista.</p></div>
+      <h2>En el plano</h2>
+      <ul id="placed" class="placed"></ul>
+    </div>
+    <div id="shape-panel" hidden></div>
+  </aside>
+</main>
+<script>
+  setTimeout(() => { if (!window.__spaceStarted) document.getElementById('fallback').style.display = 'grid'; }, 6000);
+</script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { buildModel } from './machine_models.js';
+
+window.__spaceStarted = true;
+const token = new URLSearchParams(location.hash.slice(1)).get('token') || '';
+const $ = (selector) => document.querySelector(selector);
+const round = (value, digits = 2) => Math.round(value * 10 ** digits) / 10 ** digits;
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const DEFAULT_FLOOR = [30, 20];
+
+// =====================================================================
+// Estado y datos
+// =====================================================================
+let state = null;
+let inventory = null;
+let gymIndex = 0;
+let selectedId = null;
+let dirty = false;
+let mode = 'machines';      // 'machines' | 'shape'
+const models = new Map();          // id → { id, name, category, size }
+const exercisesByModel = new Map(); // id → [catalog entries]
+const catalogById = new Map();
+const routineIds = new Set();
+const previews = new Map();         // id → dataURL
+
+const gym = () => inventory.gyms[gymIndex];
+const stationById = (id) => gym().stations.find((s) => s.id === id);
+const modelOf = (station) => models.get(station.model) || models.get('generic');
+
+function h(tag, attrs = {}, ...children) {
+  const el = document.createElement(tag);
+  let value;
+  for (const [key, val] of Object.entries(attrs)) {
+    if (val == null || val === false) continue;
+    if (key === 'value') value = val;
+    else if (key.startsWith('on')) el.addEventListener(key.slice(2), val);
+    else if (key === 'class') el.className = val;
+    else if (key === 'checked') el.checked = Boolean(val);
+    else el.setAttribute(key, val === true ? '' : val);
+  }
+  for (const child of children.flat()) {
+    if (child == null || child === false) continue;
+    el.append(child instanceof Node ? child : String(child));
+  }
+  if (value !== undefined) el.value = value;
+  return el;
+}
+
+function setStatus(text, kind = '') {
+  const el = $('#status');
+  el.textContent = text;
+  el.title = text;
+  el.className = kind;
+}
+
+async function api(path, body) {
+  const response = await fetch(path, {
+    method: body ? 'POST' : 'GET',
+    headers: { 'X-Editor-Token': token, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await response.json().catch(() => ({ error: `Respuesta inválida (${response.status}).` }));
+  if (!response.ok) throw Object.assign(new Error(data.error || `Error ${response.status}.`), { status: response.status });
+  return data;
+}
+
+function markDirty() {
+  dirty = true;
+  $('#save').disabled = false;
+  setStatus('Cambios sin guardar');
+  recordHistory();
+}
+
+// Deshacer/rehacer: copias del inventario entero. Los cambios seguidos en menos de medio segundo (escribir un
+// nombre, por ejemplo) cuentan como uno solo.
+const edits = { undo: [], redo: [], current: null, at: 0 };
+const HISTORY_LIMIT = 100;
+function renderHistory() {
+  $('#undo').disabled = !edits.undo.length;
+  $('#redo').disabled = !edits.redo.length;
+}
+function resetHistory() {
+  edits.undo = [];
+  edits.redo = [];
+  edits.current = JSON.stringify(inventory);
+  renderHistory();
+}
+function recordHistory() {
+  const now = JSON.stringify(inventory);
+  if (edits.current === null || now === edits.current) return;
+  const time = Date.now();
+  if (!(time - edits.at < 500 && edits.undo.length)) {
+    edits.undo.push(edits.current);
+    if (edits.undo.length > HISTORY_LIMIT) edits.undo.shift();
+  }
+  edits.at = time;
+  edits.current = now;
+  edits.redo = [];
+  renderHistory();
+}
+function travel(from, to) {
+  if (!from.length) return;
+  stroke = null;
+  to.push(edits.current);
+  edits.current = from.pop();
+  edits.at = 0;
+  inventory = JSON.parse(edits.current);
+  gymIndex = Math.min(gymIndex, inventory.gyms.length - 1);
+  dirty = true;
+  $('#save').disabled = false;
+  setStatus('Cambios sin guardar');
+  switchGym(gymIndex, false);
+  renderHistory();
+}
+const undo = () => travel(edits.undo, edits.redo);
+const redo = () => travel(edits.redo, edits.undo);
+
+function uniqueId(taken) {
+  let n = taken.length + 1;
+  while (taken.includes(`estacion-${n}`)) n += 1;
+  return `estacion-${n}`;
+}
+
+// =====================================================================
+// Geometría del plano: contorno, secciones, paredes y puertas (misma que layout.py)
+// =====================================================================
+const rectOutline = ([w, d]) => [[0, 0], [w, 0], [w, d], [0, d]];
+const layout = () => gym().layout || { outline: rectOutline((gym().settings && gym().settings.floor) || DEFAULT_FLOOR), walls: [] };
+function bounds() {
+  const xs = layout().outline.map((p) => p[0]);
+  const zs = layout().outline.map((p) => p[1]);
+  return { x0: Math.min(...xs), x1: Math.max(...xs), z0: Math.min(...zs), z1: Math.max(...zs) };
+}
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+function orient(a, b, c) {
+  const v = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+  return Math.abs(v) < 1e-9 ? 0 : Math.sign(v);
+}
+function onSegment(a, b, c) {
+  return Math.min(a[0], b[0]) - 1e-9 <= c[0] && c[0] <= Math.max(a[0], b[0]) + 1e-9
+    && Math.min(a[1], b[1]) - 1e-9 <= c[1] && c[1] <= Math.max(a[1], b[1]) + 1e-9;
+}
+function segmentsCross(p1, p2, q1, q2) {
+  const o1 = orient(p1, p2, q1); const o2 = orient(p1, p2, q2); const o3 = orient(q1, q2, p1); const o4 = orient(q1, q2, p2);
+  if (o1 !== o2 && o3 !== o4) return true;
+  return (o1 === 0 && onSegment(p1, p2, q1)) || (o2 === 0 && onSegment(p1, p2, q2))
+    || (o3 === 0 && onSegment(q1, q2, p1)) || (o4 === 0 && onSegment(q1, q2, p2));
+}
+function pointInPolygon([x, z], polygon) {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i, i += 1) {
+    const [xi, zi] = polygon[i];
+    const [xj, zj] = polygon[j];
+    if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+  }
+  return inside;
+}
+const edgesOf = (polygon) => polygon.map((p, i) => [p, polygon[(i + 1) % polygon.length]]);
+function polygonArea(polygon) {
+  return Math.abs(edgesOf(polygon).reduce((sum, [a, b]) => sum + a[0] * b[1] - b[0] * a[1], 0)) / 2;
+}
+const wallLength = (wall) => dist(wall.from, wall.to);
+function wallPieces(wall) {
+  const length = wallLength(wall);
+  const ux = (wall.to[0] - wall.from[0]) / length; const uz = (wall.to[1] - wall.from[1]) / length;
+  const at = (t) => [wall.from[0] + ux * t, wall.from[1] + uz * t];
+  const cuts = (wall.doors || []).map((d) => [d.offset - d.width / 2, d.offset + d.width / 2]).sort((a, b) => a[0] - b[0]);
+  const pieces = [];
+  let cursor = 0;
+  for (const [a, b] of [...cuts, [length, length]]) {
+    if (a - cursor > 1e-9) pieces.push([at(cursor), at(a)]);
+    cursor = Math.max(cursor, b);
+  }
+  return pieces;
+}
+const SECTION_COLORS = [0x4f86e8, 0xe0873a, 0x3fa37a, 0xb05fc9, 0xd4b13a, 0xd25b6e, 0x46a9c2, 0x8d9a3c];
+const sectionColor = (index) => SECTION_COLORS[index % SECTION_COLORS.length];
+function sectionEdges(section) {
+  const polygon = section.outline;
+  return polygon.map((a, i) => ({
+    from: a, to: polygon[(i + 1) % polygon.length], section: section.id, edge: i,
+    doors: (section.doors || []).filter((d) => d.edge === i),
+  }));
+}
+function allWalls() {
+  // Paredes que bloquean: las sueltas y los bordes de las secciones con muros (igual que layout.all_walls).
+  const { walls = [], sections = [] } = layout();
+  return [...walls, ...sections.filter((sec) => sec.walled !== false).flatMap(sectionEdges)];
+}
+const wallSegments = () => allWalls().flatMap(wallPieces);
+function sectionAt(point) {
+  const found = (layout().sections || []).filter((sec) => pointInPolygon(point, sec.outline));
+  return found.sort((a, b) => polygonArea(a.outline) - polygonArea(b.outline))[0] || null;
+}
+function centroid(polygon) {
+  let area = 0; let cx = 0; let cz = 0;
+  for (const [a, b] of edgesOf(polygon)) {
+    const cross = a[0] * b[1] - b[0] * a[1];
+    area += cross; cx += (a[0] + b[0]) * cross; cz += (a[1] + b[1]) * cross;
+  }
+  if (Math.abs(area) < 1e-9) return polygon[0];
+  return [cx / (3 * area), cz / (3 * area)];
+}
+function footprintCorners(position, rotation, size) {
+  const [w, , d] = size;
+  const angle = THREE.MathUtils.degToRad(rotation || 0);
+  const cos = Math.cos(angle); const sin = Math.sin(angle);
+  return [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]]
+    .map(([x, z]) => [position[0] + x * cos + z * sin, position[2] - x * sin + z * cos]);
+}
+function placementProblems(position, rotation, size) {
+  const corners = footprintCorners(position, rotation, size);
+  const outline = layout().outline;
+  const outside = corners.some((c) => !pointInPolygon(c, outline))
+    || edgesOf(corners).some(([a, b]) => edgesOf(outline).some(([p, q]) => segmentsCross(a, b, p, q)));
+  const wall = wallSegments().some(([p, q]) => pointInPolygon(p, corners) || pointInPolygon(q, corners)
+    || edgesOf(corners).some(([a, b]) => segmentsCross(a, b, p, q)));
+  return { outside, wall };
+}
+function issues() {
+  const result = new Map();
+  const add = (id, message) => result.set(id, [...(result.get(id) || []), message]);
+  for (const [id, names] of overlaps()) add(id, `se superpone con ${names.join(', ')}`);
+  for (const station of gym().stations) {
+    if (!station.position) continue;
+    const problems = placementProblems(station.position, station.rotation_deg, modelOf(station).size);
+    if (problems.outside) add(station.id, 'queda fuera de la forma del gimnasio');
+    if (problems.wall) add(station.id, 'atraviesa una pared');
+  }
+  return result;
+}
+
+// =====================================================================
+// Escena
+// =====================================================================
+const view = $('#view');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+view.prepend(renderer.domElement);
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.domElement.className = 'labels';
+view.append(labelRenderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+const orbit = new OrbitControls(camera, renderer.domElement);
+orbit.enableDamping = true;
+orbit.maxPolarAngle = Math.PI / 2 - 0.03;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x80889a, 1.4));
+const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+sun.position.set(20, 35, 25);
+scene.add(sun);
+const floorGroup = new THREE.Group();
+scene.add(floorGroup);
+const placedObjects = new Map(); // id → { group, model, footprint, label, el }
+const footprintMaterial = () => new THREE.MeshBasicMaterial({ color: 0x2f6fde, transparent: true, opacity: 0, depthWrite: false });
+
+const UNIT_BOX = new THREE.BoxGeometry(1, 1, 1);
+const LAYOUT_MAT = {
+  wall: new THREE.MeshStandardMaterial({ color: 0xd8d2c7, roughness: 0.9, transparent: true, opacity: 0.6, depthWrite: false }),
+  curb: new THREE.MeshStandardMaterial({ color: 0x8f949c, roughness: 0.9 }),
+  door: new THREE.MeshStandardMaterial({ color: 0x3f9d6b, roughness: 0.7 }),
+  openEdge: new THREE.LineDashedMaterial({ color: 0x9aa0aa, dashSize: 0.3, gapSize: 0.2 }),
+};
+const SHARED = new Set([UNIT_BOX, ...Object.values(LAYOUT_MAT)]);
+const WALL_HEIGHT = 2.4;
+const WALL_THICKNESS = 0.12;
+
+function clearGroup(group) {
+  for (const child of [...group.children]) {
+    group.remove(child);
+    child.traverse((node) => {
+      if (node.geometry && !SHARED.has(node.geometry)) node.geometry.dispose();
+      if (node.material && !SHARED.has(node.material)) node.material.dispose();
+    });
+  }
+}
+
+function segmentBox(a, b, height, thickness, material, data, y = height / 2) {
+  const length = dist(a, b);
+  if (length < 1e-3) return null;
+  const mesh = new THREE.Mesh(UNIT_BOX, material);
+  mesh.scale.set(length, height, thickness);
+  mesh.position.set((a[0] + b[0]) / 2, y, (a[1] + b[1]) / 2);
+  mesh.rotation.y = -Math.atan2(b[1] - a[1], b[0] - a[0]);
+  Object.assign(mesh.userData, data);
+  floorGroup.add(mesh);
+  return mesh;
+}
+
+function gridInside(outline, axis, value) {
+  // Tramos de la recta x=value (axis 0) o z=value (axis 1) dentro del contorno.
+  const other = 1 - axis;
+  const hits = [];
+  for (const [a, b] of edgesOf(outline)) {
+    if ((a[axis] <= value) !== (b[axis] <= value)) {
+      hits.push(a[other] + ((value - a[axis]) * (b[other] - a[other])) / (b[axis] - a[axis]));
+    }
+  }
+  hits.sort((x, y) => x - y);
+  const spans = [];
+  for (let i = 0; i + 1 < hits.length; i += 2) spans.push([hits[i], hits[i + 1]]);
+  return spans;
+}
+
+function buildLayout() {
+  clearGroup(floorGroup);
+  scene.background = new THREE.Color(css('--scene'));
+  const { outline, walls = [] } = layout();
+  const shape = new THREE.Shape(outline.map(([x, z]) => new THREE.Vector2(x, -z)));
+  const plane = new THREE.Mesh(new THREE.ShapeGeometry(shape),
+    new THREE.MeshStandardMaterial({ color: css('--floor'), roughness: 0.95, side: THREE.DoubleSide }));
+  plane.rotation.x = -Math.PI / 2;
+  floorGroup.add(plane);
+  const b = bounds();
+  const thin = [];
+  const strong = [];
+  for (let x = Math.ceil(b.x0); x <= b.x1 + 1e-6; x += 1) {
+    for (const [z0, z1] of gridInside(outline, 0, x + 1e-4)) (x % 5 === 0 ? strong : thin).push(x, 0.004, z0, x, 0.004, z1);
+  }
+  for (let z = Math.ceil(b.z0); z <= b.z1 + 1e-6; z += 1) {
+    for (const [x0, x1] of gridInside(outline, 1, z + 1e-4)) (z % 5 === 0 ? strong : thin).push(x0, 0.004, z, x1, 0.004, z);
+  }
+  for (const [points, color] of [[thin, css('--grid')], [strong, css('--grid-strong')]]) {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
+    floorGroup.add(new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color })));
+  }
+  edgesOf(outline).forEach(([a, c], i) => segmentBox(a, c, 0.15, 0.15, LAYOUT_MAT.curb, { edge: i }));
+  const renderWall = (wall, data) => {
+    const material = LAYOUT_MAT.wall;
+    for (const [a, c] of wallPieces(wall)) segmentBox(a, c, WALL_HEIGHT, WALL_THICKNESS, material, data);
+    const length = wallLength(wall);
+    const u = [(wall.to[0] - wall.from[0]) / length, (wall.to[1] - wall.from[1]) / length];
+    for (const door of wall.doors || []) {
+      const a = [wall.from[0] + u[0] * (door.offset - door.width / 2), wall.from[1] + u[1] * (door.offset - door.width / 2)];
+      const c = [wall.from[0] + u[0] * (door.offset + door.width / 2), wall.from[1] + u[1] * (door.offset + door.width / 2)];
+      segmentBox(a, c, 0.3, WALL_THICKNESS, material, data, WALL_HEIGHT - 0.15);
+      segmentBox(a, c, 0.02, 0.6, LAYOUT_MAT.door, data, 0.012);
+    }
+  };
+  // Con plano de casillas el color de cada sección es el de su sala.
+  const grid = layout().grid;
+  const colorOf = (section, index) => sectionColor(grid && section.room ? Math.max(0, grid.rooms.findIndex((r) => r.key === section.room)) : index);
+  (layout().sections || []).forEach((section, index) => {
+    const color = colorOf(section, index);
+    const fill = new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(section.outline.map(([x, z]) => new THREE.Vector2(x, -z)))),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide }));
+    fill.rotation.x = -Math.PI / 2;
+    fill.position.y = 0.006 + index * 0.0005;
+    fill.userData.sectionId = section.id;
+    floorGroup.add(fill);
+    const [cx, cz] = centroid(section.outline);
+    const name = new CSS2DObject(h('div', { class: 'label', style: `border-left:4px solid #${color.toString(16).padStart(6, '0')}` },
+      section.name + (section.walled === false && !grid ? ' · abierta' : '')));
+    name.position.set(cx, 0.05, cz);
+    floorGroup.add(name);
+    if (section.walled !== false) for (const edge of sectionEdges(section)) renderWall(edge, { sectionId: section.id, edge: edge.edge });
+    else if (!grid) {
+      const points = [...section.outline, section.outline[0]].map(([x, z]) => new THREE.Vector3(x, 0.02, z));
+      const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), LAYOUT_MAT.openEdge);
+      line.computeLineDistances();
+      floorGroup.add(line);
+    }
+  });
+  for (const wall of walls) renderWall(wall, { wallId: wall.id });
+}
+
+function frame(top = false) {
+  // Distancia para que entren el ancho y el fondo con la proporción actual de la vista.
+  const b = bounds();
+  const cx = (b.x0 + b.x1) / 2;
+  const cz = (b.z0 + b.z1) / 2;
+  const tan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const fit = Math.max((b.z1 - b.z0) / 2 / tan, (b.x1 - b.x0) / 2 / (tan * camera.aspect)) * 1.12;
+  orbit.target.set(cx, 0, cz);
+  if (top) camera.position.set(cx, fit + 2, cz + 0.01);
+  else camera.position.copy(orbit.target).addScaledVector(new THREE.Vector3(0, 0.62, 0.78).normalize(), fit * 1.2);
+  orbit.update();
+}
+
+function footprintBox(station) {
+  const [w, , d] = modelOf(station).size;
+  const angle = THREE.MathUtils.degToRad(station.rotation_deg || 0);
+  const halfW = (Math.abs(w * Math.cos(angle)) + Math.abs(d * Math.sin(angle))) / 2;
+  const halfD = (Math.abs(w * Math.sin(angle)) + Math.abs(d * Math.cos(angle))) / 2;
+  const [x, , z] = station.position;
+  return { x0: x - halfW, x1: x + halfW, z0: z - halfD, z1: z + halfD };
+}
+
+function overlaps() {
+  const placed = gym().stations.filter((s) => s.position);
+  const boxes = placed.map(footprintBox);
+  const result = new Map();
+  for (let i = 0; i < placed.length; i += 1) {
+    for (let j = i + 1; j < placed.length; j += 1) {
+      const a = boxes[i];
+      const b = boxes[j];
+      if (a.x0 < b.x1 - 0.05 && b.x0 < a.x1 - 0.05 && a.z0 < b.z1 - 0.05 && b.z0 < a.z1 - 0.05) {
+        for (const [s, other] of [[placed[i], placed[j]], [placed[j], placed[i]]]) {
+          result.set(s.id, [...(result.get(s.id) || []), other.name]);
+        }
+      }
+    }
+  }
+  return result;
+}
+
+function syncScene() {
+  const present = new Set();
+  const crossing = issues();
+  for (const station of gym().stations) {
+    if (!station.position) continue;
+    present.add(station.id);
+    let entry = placedObjects.get(station.id);
+    const modelId = modelOf(station).id;
+    if (entry && entry.model !== modelId) {
+      scene.remove(entry.group, entry.label);
+      placedObjects.delete(station.id);
+      entry = null;
+    }
+    if (!entry) {
+      const group = new THREE.Group();
+      group.add(buildModel(modelId));
+      const [w, , d] = modelOf(station).size;
+      const footprint = new THREE.Mesh(new THREE.PlaneGeometry(w, d), footprintMaterial());
+      footprint.rotation.x = -Math.PI / 2;
+      footprint.position.y = 0.01;
+      group.add(footprint);
+      group.traverse((node) => { node.userData.stationId = station.id; });
+      const el = h('div', { class: 'label' });
+      const label = new CSS2DObject(el);
+      scene.add(group, label);
+      entry = { group, model: modelId, footprint, label, el };
+      placedObjects.set(station.id, entry);
+    }
+    const [x, y, z] = station.position;
+    entry.group.position.set(x, y, z);
+    entry.group.rotation.y = THREE.MathUtils.degToRad(station.rotation_deg || 0);
+    const selected = station.id === selectedId;
+    const crossed = crossing.has(station.id);
+    entry.footprint.material.color.set(crossed ? 0xe08a2e : 0x2f6fde);
+    entry.footprint.material.opacity = selected ? 0.35 : (crossed ? 0.3 : 0);
+    entry.label.position.set(x, y + modelOf(station).size[1] + 0.25, z);
+    entry.label.visible = $('#labels').checked || selected;
+    entry.el.textContent = station.name;
+    entry.el.classList.toggle('selected', selected);
+    entry.el.classList.toggle('overlap', crossed);
+  }
+  for (const [id, entry] of placedObjects) {
+    if (present.has(id)) continue;
+    scene.remove(entry.group, entry.label);
+    entry.footprint.geometry.dispose();
+    entry.footprint.material.dispose();
+    placedObjects.delete(id);
+  }
+  return crossing;
+}
+
+// =====================================================================
+// Vistas previas de cada modelo para la lista
+// =====================================================================
+function renderPreviews() {
+  const size = [192, 144];
+  const offscreen = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  offscreen.setSize(size[0], size[1]);
+  const previewScene = new THREE.Scene();
+  previewScene.background = new THREE.Color(0xdde1e6);
+  previewScene.add(new THREE.HemisphereLight(0xffffff, 0x80889a, 1.6));
+  const light = new THREE.DirectionalLight(0xffffff, 2.4);
+  light.position.set(3, 5, 4);
+  previewScene.add(light);
+  const previewCamera = new THREE.PerspectiveCamera(32, size[0] / size[1], 0.05, 50);
+  for (const model of models.values()) {
+    const group = buildModel(model.id);
+    previewScene.add(group);
+    const bounds = new THREE.Box3().setFromObject(group);
+    const center = bounds.getCenter(new THREE.Vector3());
+    const radius = bounds.getSize(new THREE.Vector3()).length() / 2;
+    const distance = radius / Math.sin(THREE.MathUtils.degToRad(previewCamera.fov / 2)) * 0.95;
+    previewCamera.position.copy(center).add(new THREE.Vector3(0.75, 0.55, 1).normalize().multiplyScalar(distance));
+    previewCamera.lookAt(center);
+    offscreen.render(previewScene, previewCamera);
+    previews.set(model.id, offscreen.domElement.toDataURL('image/png'));
+    previewScene.remove(group);
+  }
+  offscreen.dispose();
+}
+
+// =====================================================================
+// Paneles
+// =====================================================================
+function placedCount(modelId) {
+  return gym().stations.filter((s) => s.position && modelOf(s).id === modelId).length;
+}
+
+function modelsInRoutines() {
+  const result = new Set();
+  for (const id of routineIds) {
+    const entry = catalogById.get(id);
+    if (entry) result.add(entry.model);
+  }
+  return result;
+}
+
+function renderPalette() {
+  const query = $('#search').value.trim().toLowerCase();
+  const words = query.split(/\s+/).filter(Boolean);
+  const mine = modelsInRoutines();
+  const container = $('#palette');
+  container.replaceChildren();
+  for (const category of state.categories) {
+    const items = [];
+    for (const model of models.values()) {
+      if (model.category !== category) continue;
+      const exercises = exercisesByModel.get(model.id) || [];
+      const nameMatch = words.every((w) => model.name.toLowerCase().includes(w));
+      const matches = nameMatch ? [] : exercises.filter((e) => words.every((w) => e.title.toLowerCase().includes(w)));
+      if (words.length && !nameMatch && !matches.length) continue;
+      const count = placedCount(model.id);
+      items.push(h('button', {
+        class: 'machine', type: 'button', title: `Agregar ${model.name} al plano`,
+        onclick: () => addMachine(model.id),
+      },
+      h('img', { src: previews.get(model.id) || '', alt: '' }),
+      h('div', {},
+        h('div', { class: 'name' }, model.name),
+        h('div', { class: 'meta' }, `${exercises.length} ejercicio${exercises.length === 1 ? '' : 's'} de Hevy`,
+          mine.has(model.id) ? h('span', { class: count ? 'tag mine' : 'tag missing' }, count ? 'en tus rutinas' : 'falta ubicar') : null,
+          count ? h('span', { class: 'tag' }, `×${count}`) : null),
+        matches.length ? h('div', { class: 'match' }, matches.slice(0, 3).map((e) => e.title).join(' · ')) : null)));
+    }
+    if (!items.length) continue;
+    const details = h('details', { class: 'category', open: true }, h('summary', {}, `${category} (${items.length})`), ...items);
+    container.append(details);
+  }
+  if (!container.children.length) container.append(h('p', { class: 'muted' }, 'Ninguna máquina coincide con la búsqueda.'));
+}
+
+function pendingGroups() {
+  const groups = new Map();
+  for (const station of gym().stations) {
+    if (station.position) continue;
+    const key = modelOf(station).id;
+    groups.set(key, [...(groups.get(key) || []), station]);
+  }
+  return groups;
+}
+
+function renderPending() {
+  const groups = pendingGroups();
+  const container = $('#pending');
+  if (!groups.size) { container.replaceChildren(); return; }
+  container.replaceChildren(
+    h('h2', {}, 'Sin ubicar de tus rutinas'),
+    h('p', { class: 'muted small' }, 'Estaciones que ya estaban en el inventario. Al ubicarlas se unen las que usan la misma máquina.'),
+    ...[...groups].map(([modelId, stations]) => h('button', {
+      class: 'machine', type: 'button', onclick: () => placePending(modelId),
+    },
+    h('img', { src: previews.get(modelId) || '', alt: '' }),
+    h('div', {},
+      h('div', { class: 'name' }, models.get(modelId).name),
+      h('div', { class: 'match' }, stations.map((s) => s.name).join(' · '))))),
+  );
+}
+
+function renderPlaced() {
+  const crossing = issues();
+  const items = gym().stations.filter((s) => s.position).map((station) => h('li', {
+    class: station.id === selectedId ? 'selected' : '', onclick: () => select(station.id, true),
+    title: (crossing.get(station.id) || []).join('; '),
+  }, h('span', {}, station.name), crossing.has(station.id) ? h('span', { class: 'warn small' }, 'revisar') : null));
+  $('#placed').replaceChildren(...(items.length ? items : [h('li', { class: 'muted' }, 'Todavía no hay máquinas en el plano.')]));
+}
+
+function exerciseRow(station, entry, checked) {
+  return h('label', { class: 'exercise' },
+    h('input', {
+      type: 'checkbox', checked,
+      onchange: (event) => {
+        const ids = new Set(station.exercise_template_ids);
+        if (event.target.checked) ids.add(entry.id); else ids.delete(entry.id);
+        station.exercise_template_ids = [...ids];
+        renderSelected();
+        renderPalette();
+        markDirty();
+      },
+    }),
+    entry.thumbnail_url ? h('img', { src: entry.thumbnail_url, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }) : null,
+    h('span', { title: entry.title }, entry.title),
+    routineIds.has(entry.id) ? h('span', { class: 'tag mine', style: 'flex:none' }, 'rutina') : null);
+}
+
+function renderSelected() {
+  const container = $('#selected');
+  const station = selectedId ? stationById(selectedId) : null;
+  if (!station) {
+    container.replaceChildren(h('p', { class: 'muted' }, 'Seleccioná una máquina en el plano o agregala desde la lista.'));
+    return;
+  }
+  const model = modelOf(station);
+  const own = exercisesByModel.get(model.id) || [];
+  const ownIds = new Set(own.map((e) => e.id));
+  const linked = new Set(station.exercise_template_ids);
+  const extra = station.exercise_template_ids.filter((id) => !ownIds.has(id))
+    .map((id) => catalogById.get(id) || { id, title: id });
+  const sorted = [...own].sort((a, b) => Number(routineIds.has(b.id)) - Number(routineIds.has(a.id)));
+  const list = h('div', { class: 'exercises' });
+  const filter = h('input', {
+    type: 'search', placeholder: 'Filtrar ejercicios', style: 'width:100%;margin-bottom:4px',
+    oninput: () => fillList(),
+  });
+  function fillList() {
+    const words = filter.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const keep = (e) => words.every((w) => e.title.toLowerCase().includes(w));
+    list.replaceChildren(...extra.filter(keep).map((e) => exerciseRow(station, e, true)),
+      ...sorted.filter(keep).map((e) => exerciseRow(station, e, linked.has(e.id))));
+  }
+  fillList();
+  const crossing = issues().get(station.id);
+  const [x, , z] = station.position || [0, 0, 0];
+  const numberInput = (value, onValue, step = '0.1') => h('input', {
+    type: 'number', step, value: round(value, 2),
+    onchange: (event) => {
+      const parsed = parseFloat(event.target.value);
+      if (Number.isFinite(parsed)) { onValue(parsed); refreshAll(); markDirty(); }
+    },
+  });
+  container.replaceChildren(...[
+    h('img', { class: 'preview', src: previews.get(model.id) || '', alt: model.name }),
+    h('label', { class: 'field' }, h('span', {}, 'Nombre en tu gimnasio'), h('input', {
+      value: station.name,
+      oninput: (event) => { station.name = event.target.value.trim() ? event.target.value : model.name; syncScene(); renderPlaced(); markDirty(); },
+    })),
+    h('label', { class: 'field' }, h('span', {}, 'Máquina'), h('select', {
+      value: model.id,
+      onchange: (event) => {
+        const previous = new Set((exercisesByModel.get(model.id) || []).map((e) => e.id));
+        if (station.name === model.name) station.name = models.get(event.target.value).name;
+        const kept = station.exercise_template_ids.filter((id) => !previous.has(id) || routineIds.has(id));
+        station.model = event.target.value;
+        station.exercise_template_ids = [...new Set([...kept, ...(exercisesByModel.get(station.model) || []).map((e) => e.id)])];
+        refreshAll();
+        markDirty();
+      },
+    }, ...state.categories.map((category) => h('optgroup', { label: category },
+      ...[...models.values()].filter((m) => m.category === category).map((m) => h('option', { value: m.id }, m.name)))))),
+    station.position && (layout().sections || []).length ? h('p', { class: 'small' },
+      `Sección: ${sectionAt([station.position[0], station.position[2]])?.name || 'fuera de las secciones dibujadas'}`) : null,
+    station.position ? h('div', { class: 'grid3' },
+      h('label', { class: 'field' }, h('span', {}, 'X (m)'), numberInput(x, (v) => { station.position = [clampX(v), station.position[1], station.position[2]]; })),
+      h('label', { class: 'field' }, h('span', {}, 'Z (m)'), numberInput(z, (v) => { station.position = [station.position[0], station.position[1], clampZ(v)]; })),
+      h('label', { class: 'field' }, h('span', {}, 'Giro (°)'), numberInput(station.rotation_deg || 0, (v) => { station.rotation_deg = ((v % 360) + 360) % 360; }, '15')),
+    ) : null,
+    crossing ? h('p', { class: 'warn small' }, `Revisar: ${crossing.join('; ')}.`) : null,
+    h('div', { class: 'field' },
+      h('span', { class: 'muted small' }, `Ejercicios de Hevy que se hacen aquí (${station.exercise_template_ids.length})`),
+      filter, list,
+      h('div', { class: 'row', style: 'margin-top:4px' },
+        h('button', { onclick: () => { station.exercise_template_ids = [...new Set([...station.exercise_template_ids, ...own.map((e) => e.id)])]; renderSelected(); markDirty(); } }, 'Todos'),
+        h('button', { onclick: () => { station.exercise_template_ids = station.exercise_template_ids.filter((id) => routineIds.has(id)); renderSelected(); markDirty(); } }, 'Solo los de mis rutinas'))),
+    h('div', { class: 'row' },
+      h('button', { onclick: rotateSelected.bind(null, 90) }, 'Girar 90°'),
+      h('button', { onclick: duplicateSelected }, 'Duplicar'),
+      h('button', { class: 'danger', onclick: deleteSelected }, 'Eliminar')),
+  ].filter(Boolean));
+}
+
+function refreshAll() {
+  syncScene();
+  renderPending();
+  renderPalette();
+  renderPlaced();
+  renderSelected();
+}
+
+// =====================================================================
+// Acciones
+// =====================================================================
+const clampX = (v) => Math.min(Math.max(v, bounds().x0), bounds().x1);
+const clampZ = (v) => Math.min(Math.max(v, bounds().z0), bounds().z1);
+
+function freeSpot(model) {
+  const start = [clampX(round(orbit.target.x, 1)), clampZ(round(orbit.target.z, 1))];
+  const [mw, , md] = model.size;
+  const taken = gym().stations.filter((s) => s.position).map(footprintBox);
+  const free = (x, z) => {
+    const problems = placementProblems([x, 0, z], 0, model.size);
+    return !problems.outside && !problems.wall && taken.every((b) => x + mw / 2 <= b.x0 + 0.05
+      || b.x1 - 0.05 <= x - mw / 2 || z + md / 2 <= b.z0 + 0.05 || b.z1 - 0.05 <= z - md / 2);
+  };
+  for (let ring = 0; ring < 40; ring += 1) {
+    for (let i = -ring; i <= ring; i += 1) {
+      for (const [dx, dz] of [[i, -ring], [i, ring], [-ring, i], [ring, i]]) {
+        const x = round(start[0] + dx * 0.5, 1);
+        const z = round(start[1] + dz * 0.5, 1);
+        if (free(x, z)) return [x, 0, z];
+      }
+    }
+  }
+  return [start[0], 0, start[1]];
+}
+
+function addMachine(modelId) {
+  const model = models.get(modelId);
+  const station = {
+    id: uniqueId(gym().stations.map((s) => s.id)), name: model.name, type: null, zone: null, accessories: [], notes: '',
+    exercise_template_ids: (exercisesByModel.get(modelId) || []).map((e) => e.id),
+    model: modelId, position: freeSpot(model), rotation_deg: 0,
+  };
+  gym().stations.push(station);
+  select(station.id);
+  markDirty();
+  setStatus(`${model.name} agregada. Arrastrala a su lugar.`);
+}
+
+function placePending(modelId) {
+  const stations = pendingGroups().get(modelId) || [];
+  if (!stations.length) return;
+  const [first, ...rest] = stations;
+  const model = models.get(modelId);
+  first.model = modelId;
+  first.exercise_template_ids = [...new Set(stations.flatMap((s) => s.exercise_template_ids)
+    .concat((exercisesByModel.get(modelId) || []).map((e) => e.id)))];
+  if (rest.length || /^(Nueva estación|estacion-\d+)$/.test(first.name)) first.name = model.name;
+  first.position = freeSpot(model);
+  first.rotation_deg = first.rotation_deg || 0;
+  const removed = new Set(rest.map((s) => s.id));
+  gym().stations = gym().stations.filter((s) => !removed.has(s.id));
+  select(first.id);
+  markDirty();
+  setStatus(rest.length ? `${model.name}: se unieron ${stations.length} estaciones en una.` : `${model.name} ubicada.`);
+}
+
+function rotateSelected(degrees) {
+  const station = selectedId && stationById(selectedId);
+  if (!station || !station.position) return;
+  station.rotation_deg = (((station.rotation_deg || 0) + degrees) % 360 + 360) % 360;
+  refreshAll();
+  markDirty();
+}
+
+function duplicateSelected() {
+  const station = selectedId && stationById(selectedId);
+  if (!station) return;
+  const copy = structuredClone(station);
+  copy.id = uniqueId(gym().stations.map((s) => s.id));
+  copy.position = freeSpot(modelOf(station));
+  gym().stations.push(copy);
+  select(copy.id);
+  markDirty();
+}
+
+function deleteSelected() {
+  const station = selectedId && stationById(selectedId);
+  if (!station || !confirm(`¿Quitar "${station.name}" del gimnasio?`)) return;
+  gym().stations = gym().stations.filter((s) => s.id !== station.id);
+  select(null);
+  markDirty();
+}
+
+function select(id, focus = false) {
+  selectedId = id;
+  refreshAll();
+  const station = id && stationById(id);
+  if (focus && station?.position) {
+    const offset = camera.position.clone().sub(orbit.target);
+    orbit.target.set(station.position[0], 0, station.position[2]);
+    camera.position.copy(orbit.target).add(offset);
+  }
+}
+
+async function save() {
+  if (!dirty) return;
+  // Un plano de casillas a medio pintar no se guarda: layout.py necesita un contorno y salas válidos.
+  for (const g of inventory.gyms) {
+    if (!g.layout?.grid) continue;
+    let problem;
+    try { problem = deriveLayout(g.layout.grid).problem; } catch (error) { problem = error.message; }
+    if (problem) { setStatus(`No se guardó. Plano de ${g.name || g.id}: ${problem}`, 'error'); return; }
+  }
+  $('#save').disabled = true;
+  setStatus('Guardando…');
+  try {
+    const result = await api('/api/save', { inventory });
+    dirty = false;
+    setStatus(`Guardado ${new Date(result.saved_at).toLocaleTimeString()}`, 'ok');
+  } catch (error) {
+    $('#save').disabled = false;
+    setStatus(error.message, 'error');
+    if (error.status === 409) alert(error.message);
+  }
+}
+
+// =====================================================================
+// Arrastre sobre el piso
+// =====================================================================
+const raycaster = new THREE.Raycaster();
+raycaster.params.Line.threshold = 0.02;
+const pointer = new THREE.Vector2();
+const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+let drag = null;
+
+function rayFrom(event) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
+  raycaster.setFromCamera(pointer, camera);
+}
+
+function floorHit() {
+  const point = new THREE.Vector3();
+  return raycaster.ray.intersectPlane(floorPlane, point) ? point : null;
+}
+
+renderer.domElement.addEventListener('pointerdown', (event) => {
+  if (event.button !== 0) return;
+  rayFrom(event);
+  const groups = [...placedObjects.values()].map((entry) => entry.group);
+  const hit = raycaster.intersectObjects(groups, true).find((i) => i.object.userData.stationId);
+  const id = hit?.object.userData.stationId;
+  if (!id) {
+    drag = { id: null, start: [event.clientX, event.clientY] };
+    return;
+  }
+  const station = stationById(id);
+  const point = floorHit();
+  if (!station || !point) return;
+  orbit.enabled = false;
+  renderer.domElement.setPointerCapture(event.pointerId);
+  drag = { id, offset: [station.position[0] - point.x, station.position[2] - point.z], moved: false, start: [event.clientX, event.clientY] };
+  if (selectedId !== id) select(id);
+}, { capture: true });
+
+renderer.domElement.addEventListener('pointermove', (event) => {
+  if (!drag?.id) return;
+  rayFrom(event);
+  const point = floorHit();
+  if (!point) return;
+  const station = stationById(drag.id);
+  const snap = $('#snap').checked ? 0.1 : 0.01;
+  const quantize = (value) => round(Math.round(value / snap) * snap);
+  const x = clampX(quantize(point.x + drag.offset[0]));
+  const z = clampZ(quantize(point.z + drag.offset[1]));
+  if (x === station.position[0] && z === station.position[2]) return;
+  station.position = [x, station.position[1], z];
+  drag.moved = true;
+  syncScene();
+});
+
+renderer.domElement.addEventListener('pointerup', (event) => {
+  const current = drag;
+  drag = null;
+  orbit.enabled = true;
+  if (!current) return;
+  if (current.id) {
+    if (current.moved) { refreshAll(); markDirty(); }
+    return;
+  }
+  if (Math.hypot(event.clientX - current.start[0], event.clientY - current.start[1]) < 4) select(null);
+});
+
+window.addEventListener('keydown', (event) => {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') { event.preventDefault(); save(); return; }
+  if (event.target.closest('input, textarea, select')) return;
+  if ((event.metaKey || event.ctrlKey) && (event.key.toLowerCase() === 'z' || event.key.toLowerCase() === 'y')) {
+    event.preventDefault();
+    if (event.key.toLowerCase() === 'y' || event.shiftKey) redo(); else undo();
+    return;
+  }
+  if (mode === 'shape') return;
+  const station = selectedId && stationById(selectedId);
+  if (event.key === 'Escape') select(null);
+  if (!station) return;
+  if (event.key.toLowerCase() === 'r') rotateSelected(event.shiftKey ? 15 : 90);
+  if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); deleteSelected(); }
+  const moves = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+  if (moves[event.key] && station.position) {
+    event.preventDefault();
+    const step = event.shiftKey ? 0.5 : 0.1;
+    station.position = [clampX(round(station.position[0] + moves[event.key][0] * step)), station.position[1],
+      clampZ(round(station.position[2] + moves[event.key][1] * step))];
+    refreshAll();
+    markDirty();
+  }
+});
+
+// =====================================================================
+// Plano por casillas: se pintan las salas sobre una cuadrícula de 1 m y se toca la pared entre dos salas para
+// poner una puerta. Del dibujo salen el contorno, las secciones (zonas con nombre) y las paredes de layout.py.
+//
+// layout.grid = { cell, cols, rows, cells: ['aab..', ...], rooms: [{ key, name, walled }], doors: ['v,3,2', ...] }
+// Cada letra de cells es la sala de esa casilla y '.' una casilla fuera del gimnasio. Una puerta 'v,x,z' es el
+// borde vertical sobre la línea x entre las filas z y z+1; 'h,x,z' es el borde horizontal sobre la línea z entre
+// las columnas x y x+1.
+// =====================================================================
+const CELL = 1;
+const EMPTY = '.';
+const ROOM_KEYS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+let tool = 'zone';       // 'zone' | 'erase' | 'door'
+let brush = 'a';         // sala con la que se pinta
+let stroke = null;       // trazo en curso: { before, last: [col, row], start: [col, row] }
+let hover = null;        // { cell: [col, row] } o { edge: 'v,x,z' } bajo el puntero
+let planProblem = null;  // por qué el dibujo todavía no se puede guardar
+const drafts = new Map(); // gym id → cuadrícula sin guardar todavía en el inventario
+const planCanvas = $('#plan');
+const planCtx = planCanvas.getContext('2d');
+const planView = { size: 20, x0: 0, y0: 0 };
+
+// Las dos zonas del plano: el área abierta de máquinas y la recepción, con paredes y puerta.
+const ZONE_PRESETS = [
+  { name: 'Máquinas', color: '#93c5fd', walled: false },
+  { name: 'Recepción', color: '#fde047', walled: true },
+];
+const presetOf = (room) => room && ZONE_PRESETS.find((p) => p.name === room.preset);
+
+function newGrid(cols, rows) {
+  return { cell: CELL, cols, rows, cells: Array.from({ length: rows }, () => 'a'.repeat(cols)),
+    rooms: [{ key: 'a', name: 'Máquinas', walled: false, preset: 'Máquinas' }], doors: [] };
+}
+
+// Elige un tipo de zona: usa la sala de ese tipo si ya está en el plano, o la crea.
+function choosePreset(preset) {
+  const g = editGrid();
+  let room = g.rooms.find((r) => r.preset === preset.name);
+  if (!room) {
+    const key = [...ROOM_KEYS].find((k) => !roomOf(g, k));
+    if (!key) { setStatus('No se pueden agregar más zonas.', 'error'); return; }
+    room = { key, name: preset.name, walled: preset.walled, preset: preset.name };
+    g.rooms.push(room);
+    markDirty();
+  }
+  brush = room.key;
+  setTool('zone');
+}
+
+// Casillas que cubre el arrastre: el bloque entre la casilla inicial y la final.
+function dragCells(g, [c0, r0], [c1, r1]) {
+  const out = [];
+  for (let r = Math.min(r0, r1); r <= Math.max(r0, r1); r += 1) for (let c = Math.min(c0, c1); c <= Math.max(c0, c1); c += 1) out.push([c, r]);
+  return out.filter(([c, r]) => c >= 0 && r >= 0 && c < g.cols && r < g.rows);
+}
+
+// Cada sala cerrada sin puerta recibe una en el medio de la pared que comparte con el resto del gimnasio.
+function autoDoors(g, outside) {
+  for (const room of g.rooms.filter((r) => r.walled !== false)) {
+    for (const cells of components(g, (c, r) => cellAt(g, c, r) === room.key)) {
+      const own = new Set(cells.map(([c, r]) => `${c},${r}`));
+      const edges = [];
+      for (const [c, r] of cells) {
+        for (const [n, key] of [[[c - 1, r], `v,${c},${r}`], [[c + 1, r], `v,${c + 1},${r}`], [[c, r - 1], `h,${c},${r}`], [[c, r + 1], `h,${c},${r + 1}`]]) {
+          if (own.has(`${n[0]},${n[1]}`) || cellAt(g, ...n) === EMPTY || outside.has(`${n[0]},${n[1]}`)) continue;
+          if (wallBetween(g, outside, [c, r], n)) edges.push(key);
+        }
+      }
+      if (!edges.length || edges.some((key) => g.doors.includes(key))) continue;
+      edges.sort();
+      g.doors.push(edges[Math.floor(edges.length / 2)]);
+    }
+  }
+}
+
+// Cuadrícula del gimnasio actual. Sin plano guardado se arma un borrador (todo una sala, con las medidas del
+// contorno anterior o de settings.floor) que entra al inventario recién con el primer cambio.
+function planGrid() {
+  if (gym().layout?.grid) return gym().layout.grid;
+  if (!drafts.has(gym().id)) {
+    const b = bounds();
+    drafts.set(gym().id, newGrid(Math.max(2, Math.round(b.x1 - b.x0)), Math.max(2, Math.round(b.z1 - b.z0))));
+  }
+  return drafts.get(gym().id);
+}
+function editGrid() {
+  const g = planGrid();
+  if (!gym().layout?.grid) {
+    gym().layout = { outline: rectOutline([g.cols * CELL, g.rows * CELL]), sections: [], walls: [], grid: g };
+    drafts.delete(gym().id);
+  }
+  return g;
+}
+
+const cellAt = (g, c, r) => (c < 0 || r < 0 || c >= g.cols || r >= g.rows ? EMPTY : g.cells[r][c]);
+function setCell(g, c, r, key) {
+  if (c < 0 || r < 0 || c >= g.cols || r >= g.rows || g.cells[r][c] === key) return;
+  g.cells[r] = g.cells[r].slice(0, c) + key + g.cells[r].slice(c + 1);
+}
+const roomOf = (g, key) => g.rooms.find((room) => room.key === key);
+const roomIndex = (g, key) => g.rooms.findIndex((room) => room.key === key);
+const roomColor = (g, key) => presetOf(roomOf(g, key))?.color || `#${sectionColor(Math.max(0, roomIndex(g, key))).toString(16).padStart(6, '0')}`;
+
+// Casillas alcanzables desde afuera sin pasar por las que cumplen `blocked` (cuadrícula con un borde extra).
+function outsideOf(g, blocked) {
+  const seen = new Set(['-1,-1']);
+  const queue = [[-1, -1]];
+  while (queue.length) {
+    const [c, r] = queue.pop();
+    for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const n = [c + dc, r + dr];
+      const key = `${n[0]},${n[1]}`;
+      if (n[0] < -1 || n[1] < -1 || n[0] > g.cols || n[1] > g.rows || seen.has(key) || blocked(...n)) continue;
+      seen.add(key);
+      queue.push(n);
+    }
+  }
+  return seen;
+}
+
+function components(g, test) {
+  const seen = new Set();
+  const result = [];
+  for (let r = 0; r < g.rows; r += 1) {
+    for (let c = 0; c < g.cols; c += 1) {
+      if (!test(c, r) || seen.has(`${c},${r}`)) continue;
+      const cells = [];
+      const queue = [[c, r]];
+      seen.add(`${c},${r}`);
+      while (queue.length) {
+        const [x, z] = queue.pop();
+        cells.push([x, z]);
+        for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const key = `${x + dx},${z + dz}`;
+          if (x + dx < 0 || z + dz < 0 || x + dx >= g.cols || z + dz >= g.rows || seen.has(key) || !test(x + dx, z + dz)) continue;
+          seen.add(key);
+          queue.push([x + dx, z + dz]);
+        }
+      }
+      result.push(cells);
+    }
+  }
+  return result;
+}
+
+// Contorno de un grupo de casillas sin huecos, en metros; null si se toca a sí mismo por una esquina.
+function trace(inside) {
+  const next = new Map();
+  let pinch = false;
+  const add = (a, b) => {
+    const key = `${a[0]},${a[1]}`;
+    if (next.has(key)) pinch = true;
+    next.set(key, b);
+  };
+  for (const key of inside) {
+    const [c, r] = key.split(',').map(Number);
+    const has = (x, z) => inside.has(`${x},${z}`);
+    if (!has(c, r - 1)) add([c, r], [c + 1, r]);
+    if (!has(c + 1, r)) add([c + 1, r], [c + 1, r + 1]);
+    if (!has(c, r + 1)) add([c + 1, r + 1], [c, r + 1]);
+    if (!has(c - 1, r)) add([c, r + 1], [c, r]);
+  }
+  if (pinch || !next.size) return null;
+  const start = next.keys().next().value;
+  const points = [];
+  let key = start;
+  do {
+    points.push(key.split(',').map(Number));
+    const b = next.get(key);
+    key = `${b[0]},${b[1]}`;
+  } while (key !== start && points.length <= next.size);
+  if (points.length !== next.size) return null; // más de un borde: partes separadas
+  // Sin puntos intermedios en línea recta.
+  const simple = points.filter((p, i) => {
+    const a = points[(i - 1 + points.length) % points.length];
+    const b = points[(i + 1) % points.length];
+    return (b[0] - a[0]) * (p[1] - a[1]) !== (b[1] - a[1]) * (p[0] - a[0]);
+  });
+  return simple.map(([x, z]) => [x * CELL, z * CELL]);
+}
+
+// ¿Hay pared en el borde entre dos casillas? Afuera del gimnasio ya lo cierra el contorno.
+function wallBetween(g, outside, a, b) {
+  if (outside.has(`${a[0]},${a[1]}`) || outside.has(`${b[0]},${b[1]}`)) return false;
+  const ka = cellAt(g, ...a);
+  const kb = cellAt(g, ...b);
+  if (ka === kb) return false;
+  if (ka === EMPTY || kb === EMPTY) return true; // hueco sin pintar adentro: se rodea
+  return roomOf(g, ka)?.walled !== false || roomOf(g, kb)?.walled !== false;
+}
+const edgeCells = (key) => {
+  const [dir, x, z] = key.split(',');
+  const [i, j] = [Number(x), Number(z)];
+  return dir === 'v' ? [[i - 1, j], [i, j]] : [[i, j - 1], [i, j]];
+};
+
+// Plano de casillas → { outline, sections, walls } para layout.py, o { problem } si todavía no se puede usar.
+function deriveLayout(g) {
+  const outside = outsideOf(g, (c, r) => cellAt(g, c, r) !== EMPTY);
+  const solid = (c, r) => !outside.has(`${c},${r}`);
+  const parts = components(g, solid);
+  if (!parts.length) return { problem: 'Pintá al menos una sala.' };
+  if (parts.length > 1) return { problem: 'Hay partes del gimnasio separadas entre sí: pintá casillas para unirlas.' };
+  const outline = trace(new Set(parts[0].map(([c, r]) => `${c},${r}`)));
+  if (!outline) return { problem: 'Dos partes del gimnasio se tocan solo por una esquina: pintá una casilla más para unirlas.' };
+  const sections = [];
+  for (const room of g.rooms) {
+    components(g, (c, r) => cellAt(g, c, r) === room.key).forEach((cells, n) => {
+      // Sala que rodea a otra: su sección es el borde de afuera; la de adentro es más chica y gana en section_of.
+      const own = new Set(cells.map(([c, r]) => `${c},${r}`));
+      const around = outsideOf(g, (c, r) => own.has(`${c},${r}`));
+      const filled = new Set();
+      for (let r = 0; r < g.rows; r += 1) for (let c = 0; c < g.cols; c += 1) if (!around.has(`${c},${r}`)) filled.add(`${c},${r}`);
+      const polygon = trace(filled);
+      if (!polygon) throw new Error(`La sala «${room.name}» se toca a sí misma solo por una esquina: pintá una casilla más.`);
+      sections.push({ id: `seccion-${room.key}-${n + 1}`, name: room.name, outline: polygon, walled: false, doors: [], room: room.key });
+    });
+  }
+  // Paredes: bordes entre salas distintas, unidos en tramos rectos; las puertas son huecos dentro del tramo.
+  const doors = new Set(g.doors);
+  const walls = [];
+  const run = (dir, line, length, cellsOf, at) => {
+    let start = null;
+    let gaps = [];
+    const flush = (end) => {
+      if (start === null) return;
+      const merged = [];
+      for (const i of gaps) {
+        const last = merged[merged.length - 1];
+        if (last && last[1] === i) last[1] = i + 1; else merged.push([i, i + 1]);
+      }
+      walls.push({ id: `pared-${walls.length + 1}`, from: at(start), to: at(end),
+        doors: merged.map(([a, b]) => ({ offset: ((a + b) / 2 - start) * CELL, width: (b - a) * CELL })) });
+      start = null;
+      gaps = [];
+    };
+    for (let i = 0; i < length; i += 1) {
+      const key = `${dir},${dir === 'v' ? line : i},${dir === 'v' ? i : line}`;
+      if (wallBetween(g, outside, ...cellsOf(i))) {
+        if (start === null) start = i;
+        if (doors.has(key)) gaps.push(i);
+      } else flush(i);
+    }
+    flush(length);
+  };
+  for (let x = 1; x < g.cols; x += 1) run('v', x, g.rows, (i) => [[x - 1, i], [x, i]], (i) => [x * CELL, i * CELL]);
+  for (let z = 1; z < g.rows; z += 1) run('h', z, g.cols, (i) => [[i, z - 1], [i, z]], (i) => [i * CELL, z * CELL]);
+  return { layout: { outline, sections, walls } };
+}
+
+// Recalcula el plano del gimnasio actual a partir de las casillas y guarda el problema, si lo hay.
+function applyGrid() {
+  const g = planGrid();
+  let result;
+  try { result = deriveLayout(g); } catch (error) { result = { problem: error.message }; }
+  planProblem = result.problem || null;
+  if (result.layout && gym().layout?.grid) {
+    // Las puertas que quedaron sin pared (se repintó alrededor) se descartan.
+    const outside = outsideOf(g, (c, r) => cellAt(g, c, r) !== EMPTY);
+    g.doors = g.doors.filter((key) => wallBetween(g, outside, ...edgeCells(key)));
+    autoDoors(g, outside);
+    Object.assign(gym().layout, deriveLayout(g).layout);
+  }
+}
+
+// ---------- Dibujo ----------
+function fitPlanView(g) {
+  const width = view.clientWidth;
+  const height = view.clientHeight;
+  const top = $('.toolbar').offsetHeight + 46;
+  const bottom = $('#hint').offsetHeight + 24;
+  // Se deja 3 m de margen para poder agrandar el terreno arrastrando sus bordes.
+  const size = Math.max(6, Math.floor(Math.min((width - 80) / (g.cols + 3), (height - top - bottom) / (g.rows + 3))));
+  planView.size = size;
+  planView.x0 = Math.round((width - g.cols * size) / 2);
+  planView.y0 = Math.round(top + (height - top - bottom - g.rows * size) / 2);
+}
+
+function drawPlan() {
+  if (mode !== 'shape' || !inventory) return;
+  const g = planGrid();
+  const dpr = window.devicePixelRatio || 1;
+  const width = view.clientWidth;
+  const height = view.clientHeight;
+  if (planCanvas.width !== Math.round(width * dpr) || planCanvas.height !== Math.round(height * dpr)) {
+    planCanvas.width = Math.round(width * dpr);
+    planCanvas.height = Math.round(height * dpr);
+    planCanvas.style.width = `${width}px`;
+    planCanvas.style.height = `${height}px`;
+  }
+  if (!sizing) fitPlanView(g);
+  const { size, x0, y0 } = planView;
+  const ctx = planCtx;
+  const X = (c) => x0 + c * size;
+  const Y = (r) => y0 + r * size;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = css('--scene');
+  ctx.fillRect(0, 0, width, height);
+  // Terreno vacío y casillas pintadas.
+  ctx.fillStyle = css('--bg');
+  ctx.fillRect(X(0), Y(0), g.cols * size, g.rows * size);
+  for (let r = 0; r < g.rows; r += 1) {
+    for (let c = 0; c < g.cols; c += 1) {
+      const key = g.cells[r][c];
+      if (key === EMPTY) continue;
+      ctx.fillStyle = roomColor(g, key);
+      ctx.globalAlpha = 0.5;
+      ctx.fillRect(X(c), Y(r), size, size);
+    }
+  }
+  ctx.globalAlpha = 1;
+  // Cuadrícula: fina cada metro, marcada cada 5 m.
+  for (let i = 0; i <= Math.max(g.cols, g.rows); i += 1) {
+    ctx.strokeStyle = css(i % 5 ? '--line' : '--grid');
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (i <= g.cols) { ctx.moveTo(X(i) + 0.5, Y(0)); ctx.lineTo(X(i) + 0.5, Y(g.rows)); }
+    if (i <= g.rows) { ctx.moveTo(X(0), Y(i) + 0.5); ctx.lineTo(X(g.cols), Y(i) + 0.5); }
+    ctx.stroke();
+  }
+  // Máquinas ya ubicadas, como referencia.
+  ctx.fillStyle = css('--muted');
+  ctx.globalAlpha = 0.45;
+  for (const station of gym().stations) {
+    if (!station.position) continue;
+    const corners = footprintCorners(station.position, station.rotation_deg, modelOf(station).size);
+    ctx.beginPath();
+    corners.forEach(([x, z], i) => (i ? ctx.lineTo(X(x / CELL), Y(z / CELL)) : ctx.moveTo(X(x / CELL), Y(z / CELL))));
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  // Paredes y puertas.
+  const outside = outsideOf(g, (c, r) => cellAt(g, c, r) !== EMPTY);
+  const doors = new Set(g.doors);
+  const wallWidth = Math.max(3, Math.round(size * 0.16));
+  const segment = (key) => {
+    const [dir, x, z] = key.split(',').map((v, i) => (i ? Number(v) : v));
+    return dir === 'v' ? [X(x), Y(z), X(x), Y(z + 1)] : [X(x), Y(z), X(x + 1), Y(z)];
+  };
+  const line = ([ax, ay, bx, by], color, widthPx, inset = 0) => {
+    const dx = Math.sign(bx - ax) * inset;
+    const dy = Math.sign(by - ay) * inset;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = widthPx;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(ax + dx, ay + dy);
+    ctx.lineTo(bx - dx, by - dy);
+    ctx.stroke();
+  };
+  const wallColor = css('--text');
+  const isIn = (c, r) => c >= 0 && r >= 0 && c < g.cols && r < g.rows && !outside.has(`${c},${r}`);
+  for (let r = -1; r <= g.rows; r += 1) {
+    for (let c = -1; c <= g.cols; c += 1) {
+      for (const [other, key] of [[[c + 1, r], `v,${c + 1},${r}`], [[c, r + 1], `h,${c},${r + 1}`]]) {
+        const a = [c, r];
+        const inA = isIn(...a);
+        const inB = isIn(...other);
+        if (inA !== inB) line(segment(key), wallColor, wallWidth); // contorno
+        else if (inA && wallBetween(g, outside, a, other)) {
+          if (doors.has(key)) line(segment(key), css('--ok'), wallWidth + 3, size * 0.15);
+          else line(segment(key), wallColor, wallWidth);
+        }
+      }
+    }
+  }
+  // Lo que está bajo el puntero.
+  if (hover?.edge) {
+    const ok = wallBetween(g, outside, ...edgeCells(hover.edge));
+    line(segment(hover.edge), ok ? css('--accent') : css('--danger'), wallWidth + 3);
+  } else if (stroke && hover?.cell) {
+    const [c0, r0] = stroke.start;
+    const [c1, r1] = hover.cell;
+    ctx.fillStyle = tool === 'erase' ? css('--danger') : roomColor(g, brush);
+    ctx.globalAlpha = 0.7;
+    for (const [c, r] of dragCells(g, stroke.start, hover.cell)) ctx.fillRect(X(c), Y(r), size, size);
+    ctx.globalAlpha = 1;
+    const w = Math.abs(c1 - c0) + 1;
+    const d = Math.abs(r1 - r0) + 1;
+    label(`${w} × ${d} m · ${w * d} m²`, X((c0 + c1 + 1) / 2), Y((r0 + r1 + 1) / 2), true);
+  } else if (hover?.cell && tool !== 'door') {
+    ctx.strokeStyle = tool === 'erase' ? css('--danger') : css('--accent');
+    ctx.lineWidth = 2;
+    ctx.strokeRect(X(hover.cell[0]) + 1, Y(hover.cell[1]) + 1, size - 2, size - 2);
+  }
+  // Tiradores para cambiar el tamaño del terreno: borde derecho, borde inferior y esquina.
+  ctx.fillStyle = css('--accent');
+  for (const [hx, hy, w, hgt] of [[X(g.cols), Y(g.rows / 2), 8, 36], [X(g.cols / 2), Y(g.rows), 36, 8], [X(g.cols), Y(g.rows), 14, 14]]) {
+    ctx.beginPath();
+    ctx.roundRect(hx - w / 2, hy - hgt / 2, w, hgt, 4);
+    ctx.fill();
+  }
+  if (sizing) label(`${g.cols} × ${g.rows} m`, X(g.cols) + 40, Y(g.rows) + 18, true);
+  // Nombres de las salas y medidas del terreno.
+  for (const room of g.rooms) {
+    for (const cells of components(g, (c, r) => cellAt(g, c, r) === room.key)) {
+      const cx = cells.reduce((s, [c]) => s + c, 0) / cells.length;
+      const cz = cells.reduce((s, [, r]) => s + r, 0) / cells.length;
+      const [c, r] = cells.reduce((best, p) => (Math.hypot(p[0] - cx, p[1] - cz) < Math.hypot(best[0] - cx, best[1] - cz) ? p : best));
+      label(`${room.name} · ${cells.length} m²`, X(c + 0.5), Y(r + 0.5), room.key === brush && tool === 'zone');
+    }
+  }
+  ctx.fillStyle = css('--muted');
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  for (let c = 0; c <= g.cols; c += 5) ctx.fillText(`${c} m`, X(c), Y(0) - 4);
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (let r = 5; r <= g.rows; r += 5) ctx.fillText(`${r} m`, X(0) - 6, Y(r));
+}
+
+function label(text, x, y, strong = false) {
+  const ctx = planCtx;
+  ctx.font = `${strong ? 600 : 500} 12px system-ui, sans-serif`;
+  const w = ctx.measureText(text).width + 12;
+  ctx.fillStyle = css('--panel');
+  ctx.strokeStyle = strong ? css('--accent') : css('--line');
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(x - w / 2, y - 10, w, 20, 5);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = css('--text');
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, x, y + 0.5);
+}
+
+// ---------- Puntero ----------
+function gridPoint(event) {
+  const rect = planCanvas.getBoundingClientRect();
+  return [(event.clientX - rect.left - planView.x0) / planView.size, (event.clientY - rect.top - planView.y0) / planView.size];
+}
+function cellFrom(event) {
+  const g = planGrid();
+  const [gx, gz] = gridPoint(event);
+  const cell = [Math.floor(gx), Math.floor(gz)];
+  return cell[0] >= 0 && cell[1] >= 0 && cell[0] < g.cols && cell[1] < g.rows ? cell : null;
+}
+function edgeFrom(event) {
+  const g = planGrid();
+  const [gx, gz] = gridPoint(event);
+  const vx = Math.round(gx);
+  const hz = Math.round(gz);
+  const dv = Math.abs(gx - vx);
+  const dh = Math.abs(gz - hz);
+  if (Math.min(dv, dh) > 0.3) return null;
+  if (dv <= dh) {
+    const z = Math.floor(gz);
+    return vx > 0 && vx < g.cols && z >= 0 && z < g.rows ? `v,${vx},${z}` : null;
+  }
+  const x = Math.floor(gx);
+  return hz > 0 && hz < g.rows && x >= 0 && x < g.cols ? `h,${x},${hz}` : null;
+}
+
+// Qué tirador del terreno hay bajo el puntero: 'x' (ancho), 'z' (fondo), 'xz' (esquina) o null.
+function handleFrom(event) {
+  const g = planGrid();
+  const [gx, gz] = gridPoint(event);
+  const near = 0.6;
+  const onRight = Math.abs(gx - g.cols) < near && gz > -near && gz < g.rows + near;
+  const onBottom = Math.abs(gz - g.rows) < near && gx > -near && gx < g.cols + near;
+  return (onRight ? 'x' : '') + (onBottom ? 'z' : '') || null;
+}
+let sizing = null;       // arrastre de un tirador: { axis, cells, cols, rows, doors } con el terreno original
+
+// Cambia el tamaño del terreno; lo que crece copia la zona del borde (agrandar el gimnasio agranda su zona).
+function sizeGridFrom(original, cols, rows) {
+  const g = editGrid();
+  g.cells = Array.from({ length: rows }, (_, r) => {
+    const row = original.cells[Math.min(r, original.rows - 1)];
+    return row.slice(0, cols).padEnd(cols, row[original.cols - 1]);
+  });
+  g.cols = cols;
+  g.rows = rows;
+  g.doors = original.doors.filter((key) => edgeCells(key).every(([c, r]) => c < cols && r < rows));
+}
+
+planCanvas.addEventListener('pointerdown', (event) => {
+  if (event.button !== 0) return;
+  planCanvas.setPointerCapture(event.pointerId);
+  const axis = handleFrom(event);
+  if (axis) {
+    const g = editGrid();
+    sizing = { axis, cells: [...g.cells], cols: g.cols, rows: g.rows, doors: [...g.doors] };
+    drawPlan();
+    return;
+  }
+  if (tool === 'door') { toggleDoor(edgeFrom(event)); return; }
+  const cell = cellFrom(event);
+  if (!cell) return;
+  const g = editGrid();
+  if (tool !== 'erase' && !presetOf(roomOf(g, brush))) choosePreset(ZONE_PRESETS[0]);
+  stroke = { before: JSON.stringify(g.cells), start: cell };
+  hover = { cell };
+  drawPlan();
+});
+
+planCanvas.addEventListener('pointermove', (event) => {
+  if (sizing) {
+    const [gx, gz] = gridPoint(event);
+    const cols = sizing.axis.includes('x') ? Math.max(2, Math.min(200, Math.round(gx))) : sizing.cols;
+    const rows = sizing.axis.includes('z') ? Math.max(2, Math.min(200, Math.round(gz))) : sizing.rows;
+    const g = planGrid();
+    if (cols !== g.cols || rows !== g.rows) { sizeGridFrom(sizing, cols, rows); drawPlan(); }
+    return;
+  }
+  const axis = handleFrom(event);
+  planCanvas.style.cursor = axis === 'x' ? 'ew-resize' : axis === 'z' ? 'ns-resize' : axis ? 'nwse-resize' : '';
+  if (axis) { if (hover) { hover = null; drawPlan(); } return; }
+  if (tool === 'door') {
+    hover = edgeFrom(event) ? { edge: edgeFrom(event) } : null;
+    drawPlan();
+    return;
+  }
+  const cell = cellFrom(event);
+  if (cell || !stroke) hover = cell ? { cell } : null;
+  drawPlan();
+});
+
+planCanvas.addEventListener('pointerleave', () => { if (!stroke) { hover = null; drawPlan(); } });
+
+planCanvas.addEventListener('pointerup', (event) => {
+  if (sizing) {
+    const changed = planGrid().cols !== sizing.cols || planGrid().rows !== sizing.rows;
+    sizing = null;
+    if (changed) planChanged(); else drawPlan();
+    return;
+  }
+  if (!stroke) return;
+  const g = planGrid();
+  const end = cellFrom(event) || hover?.cell || stroke.start;
+  for (const [c, r] of dragCells(g, stroke.start, end)) setCell(g, c, r, tool === 'erase' ? EMPTY : brush);
+  const changed = JSON.stringify(g.cells) !== stroke.before;
+  stroke = null;
+  if (changed) planChanged();
+  else drawPlan();
+});
+
+function toggleDoor(key) {
+  if (!key) { setStatus('Tocá justo sobre una pared (línea oscura) entre dos salas.'); return; }
+  const g = planGrid();
+  const outside = outsideOf(g, (c, r) => cellAt(g, c, r) !== EMPTY);
+  if (!wallBetween(g, outside, ...edgeCells(key))) {
+    setStatus('Ahí no hay pared: las puertas van entre dos salas que tienen paredes.', 'error');
+    return;
+  }
+  const editable = editGrid();
+  const had = editable.doors.includes(key);
+  editable.doors = had ? editable.doors.filter((d) => d !== key) : [...editable.doors, key];
+  planChanged();
+  setStatus(had ? 'Puerta quitada.' : 'Puerta de 1 m. Para una más ancha, tocá también la pared de al lado.', 'ok');
+}
+
+function planChanged() {
+  applyGrid();
+  markDirty();
+  if (planProblem) setStatus(planProblem, 'error');
+  syncScene();
+  renderPlanPanel();
+  drawPlan();
+}
+
+// ---------- Salas y panel ----------
+function renderPlanPanel() {
+  const legacy = gym().layout && !gym().layout.grid;
+  $('#shape-panel').replaceChildren(...[
+    h('h2', {}, 'Plano del gimnasio'),
+    h('ol', { class: 'steps' },
+      h('li', {}, 'Arrastrá los bordes azules del terreno para hacerlo más grande o más chico.'),
+      h('li', {}, 'Elegí Máquinas o Recepción arriba y arrastrá sobre el plano para dibujar.'),
+      h('li', {}, 'Con Borrar quitás lo que no es del gimnasio. Las paredes y la puerta de la recepción salen solas.')),
+    legacy ? h('p', { class: 'warn small' }, 'Este gimnasio tiene una forma dibujada con la versión anterior. Al dibujar, se reemplaza por este plano.') : null,
+    planProblem ? h('p', { class: 'problem' }, planProblem) : null,
+  ].filter(Boolean));
+  for (const button of document.querySelectorAll('[data-zone]')) {
+    button.classList.toggle('active', tool === 'zone' && presetOf(roomOf(planGrid(), brush))?.name === button.dataset.zone);
+  }
+}
+
+// ---------- Modos y herramientas ----------
+const HINTS = {
+  machines: 'Clic en una máquina de la lista para agregarla. Arrastrá máquinas sobre el piso; arrastrá el fondo para girar la vista, clic derecho para desplazarla y rueda para acercar. R gira, flechas mueven, Supr elimina, Ctrl/⌘+S guarda.',
+  zone: 'Arrastrá de una esquina a otra para dibujar. Arrastrá los bordes azules para cambiar el tamaño del terreno. ⌘Z deshace.',
+  erase: 'Borrar: arrastrá sobre lo que no es del gimnasio para hacer huecos, columnas o rincones.',
+  door: 'Puerta: tocá una pared (línea oscura) para poner o quitar una puerta. Las salas cerradas ya traen una.',
+};
+function renderHint() {
+  $('#hint').textContent = mode === 'machines' ? HINTS.machines : HINTS[tool];
+}
+
+function setTool(next) {
+  tool = next;
+  hover = null;
+  for (const button of document.querySelectorAll('[data-tool]')) button.classList.toggle('active', button.dataset.tool === tool);
+  renderHint();
+  renderPlanPanel();
+  drawPlan();
+}
+
+function setMode(next) {
+  mode = next;
+  for (const button of document.querySelectorAll('[data-mode]')) button.classList.toggle('active', button.dataset.mode === mode);
+  const planMode = mode === 'shape';
+  $('#machine-tools').hidden = planMode;
+  $('#view-tools').hidden = planMode;
+  $('#shape-tools').hidden = !planMode;
+  $('#machine-panel').hidden = planMode;
+  $('#shape-panel').hidden = !planMode;
+  planCanvas.hidden = !planMode;
+  renderer.domElement.hidden = planMode;
+  labelRenderer.domElement.hidden = planMode;
+  stroke = null;
+  hover = null;
+  if (planMode) {
+    selectedId = null;
+    applyGrid();
+    renderPlanPanel();
+    drawPlan();
+  } else {
+    buildLayout();
+    refreshAll();
+    frame(false);
+  }
+  renderHint();
+}
+
+// =====================================================================
+// Controles generales
+// =====================================================================
+for (const button of document.querySelectorAll('[data-mode]')) button.addEventListener('click', () => setMode(button.dataset.mode));
+for (const button of document.querySelectorAll('[data-tool]')) button.addEventListener('click', () => setTool(button.dataset.tool));
+for (const button of document.querySelectorAll('[data-zone]')) {
+  button.addEventListener('click', () => choosePreset(ZONE_PRESETS.find((p) => p.name === button.dataset.zone)));
+}
+$('#save').addEventListener('click', save);
+$('#search').addEventListener('input', renderPalette);
+$('#rotate').addEventListener('click', () => rotateSelected(90));
+$('#top-view').addEventListener('click', () => frame(true));
+$('#frame').addEventListener('click', () => frame(false));
+$('#undo').addEventListener('click', undo);
+$('#redo').addEventListener('click', redo);
+$('#labels').addEventListener('change', syncScene);
+$('#gym-name').addEventListener('input', (event) => { gym().name = event.target.value; renderGymSelect(); markDirty(); });
+$('#gym-select').addEventListener('change', (event) => switchGym(Number(event.target.value)));
+$('#add-gym').addEventListener('click', () => {
+  const ids = inventory.gyms.map((g) => g.id);
+  let n = ids.length + 1;
+  while (ids.includes(`gimnasio-${n}`)) n += 1;
+  inventory.gyms.push({ id: `gimnasio-${n}`, name: `Gimnasio ${n}`, zones: [], nearby: [], stations: [], settings: { floor: [...DEFAULT_FLOOR] } });
+  switchGym(inventory.gyms.length - 1);
+  markDirty();
+});
+
+function renderGymSelect() {
+  $('#gym-select').replaceChildren(...inventory.gyms.map((g, i) => h('option', { value: String(i) }, g.name || g.id)));
+  $('#gym-select').value = String(gymIndex);
+}
+
+function switchGym(index, reframe = true) {
+  gymIndex = index;
+  selectedId = null;
+  for (const entry of placedObjects.values()) scene.remove(entry.group, entry.label);
+  placedObjects.clear();
+  renderGymSelect();
+  $('#gym-name').value = gym().name || '';
+  stroke = null;
+  hover = null;
+  drafts.delete(gym().id);
+  buildLayout();
+  refreshAll();
+  if (mode === 'shape') { applyGrid(); renderPlanPanel(); drawPlan(); } else if (reframe) frame(false);
+}
+
+window.addEventListener('beforeunload', (event) => { if (dirty) { event.preventDefault(); event.returnValue = ''; } });
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { buildLayout(); drawPlan(); });
+new ResizeObserver(() => {
+  const { clientWidth: width, clientHeight: height } = view;
+  if (!width || !height) return;
+  renderer.setSize(width, height);
+  labelRenderer.setSize(width, height);
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+  drawPlan();
+}).observe(view);
+renderer.setAnimationLoop(() => {
+  if (mode === 'shape') return;
+  orbit.update();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+});
+
+// =====================================================================
+// Arranque
+// =====================================================================
+try {
+  state = await api('/api/state');
+  inventory = state.inventory;
+  for (const model of state.models) models.set(model.id, model);
+  for (const entry of state.catalog) {
+    catalogById.set(entry.id, entry);
+    exercisesByModel.set(entry.model, [...(exercisesByModel.get(entry.model) || []), entry]);
+  }
+  for (const routine of state.routines) for (const id of routine.exercise_template_ids) routineIds.add(id);
+  for (const g of inventory.gyms) g.stations = g.stations || [];
+  renderPreviews();
+  renderHint();
+  switchGym(0);
+  resetHistory();
+  const total = state.catalog.length;
+  setStatus(state.source === 'nuevo'
+    ? `Inventario nuevo: ${models.size} máquinas y ${total} ejercicios de Hevy. Se crea al guardar.`
+    : `${models.size} máquinas con ${total} ejercicios de Hevy.`);
+  if (state.source === 'nuevo') { dirty = true; $('#save').disabled = false; }
+} catch (error) {
+  setStatus(error.message, 'error');
+}
+</script>
+</body>
+</html>

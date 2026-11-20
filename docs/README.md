@@ -4,11 +4,12 @@
 - [Arquitectura](architecture/overview.md): datos, diagramas y decisiones que condicionan el proyecto.
 - [Operación](operations/runbook.md): comandos y qué revisar cuando falta un entrenamiento.
 - [Pendientes](backlog.md): siguientes pasos con un resultado comprobable.
+- [Borrador de posibles agentes](draft.md): candidatos, alcance propuesto y decisiones abiertas antes de implementar.
 - [Documentación oficial de la API de Hevy](https://api.hevyapp.com/docs/): referencia para la integración con Hevy.
 
-## Estado · 13 de noviembre de 2026
+## Estado · 17 de noviembre de 2026
 
-La descarga local funciona. El receptor está en Cloudflare Free y suscrito en Hevy. Se verificó el recorrido completo con un entrenamiento nuevo de prueba: aviso recibido, detalle guardado y lectura privada correcta. Una reentrega válida respondió 200 en 0,16 s. La nube recibe únicamente entrenamientos nuevos y funciona con la computadora apagada.
+La descarga local funciona y el informe aplica las preferencias. El receptor está en Cloudflare Free y suscrito en Hevy; se verificó el recorrido completo con un entrenamiento nuevo de prueba. `pull` descarga lo recibido y `report` genera el reporte calculado de cada entrenamiento, sin IA todavía. Los cambios de rutina se aplican con `routine apply`, con respaldo y verificación. `gym space` permite dibujar el plano del gimnasio (contorno, secciones con muros y puertas) y ubicar en 3D las máquinas del catálogo de Hevy; `gym graph` calcula la cercanía caminando y el orden por rutina, y `gym path` muestra ese recorrido en 3D en una página aparte. Falta relevar el gimnasio real.
 
 ## Criterio para documentar
 

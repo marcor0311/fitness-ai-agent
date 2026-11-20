@@ -1,0 +1,1012 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recorrido del gimnasio</title>
+<style>
+  :root {
+    --bg: #f3f4f6; --panel: #ffffff; --text: #1b2029; --muted: #5f6774; --line: #dde1e7; --hover: #eef1f5;
+    --accent: #2f6fde; --accent-text: #ffffff; --danger: #c13d3d; --ok: #2f8a5b; --warn: #b4581c;
+    --glass: rgba(15, 18, 26, .72); --glass-text: #e6e9ef; --glass-muted: #9aa3b2; --glass-line: rgba(255, 255, 255, .12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d0f14; --panel: #151820; --text: #e4e7ec; --muted: #9aa2ae; --line: #262b35; --hover: #1e232c;
+      --accent: #5b8ff0; --accent-text: #0c1120; --danger: #e46a6a; --ok: #5cc28c; --warn: #f0a052;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text); font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: grid; grid-template-rows: auto 1fr; overflow: hidden;
+  }
+  header {
+    display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--line);
+    background: var(--panel); flex-wrap: wrap;
+  }
+  header h1 { font-size: 15px; margin: 0 6px 0 0; font-weight: 600; }
+  .spacer { flex: 1; }
+  #status { color: var(--muted); font-size: 12px; max-width: 46ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #status.error { color: var(--danger); }
+  button, select {
+    font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--text);
+    border-radius: 6px; padding: 5px 10px; cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); }
+  button:disabled { opacity: .45; cursor: default; border-color: var(--line); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; border-right: 1px solid var(--line); background: transparent; }
+  .seg button:last-child { border-right: 0; }
+  .seg button.on { background: var(--accent); color: var(--accent-text); font-weight: 600; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; min-height: 0; }
+  aside { background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; padding: 14px 14px 40px; min-height: 0; }
+  h2 { font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 18px 0 8px; font-weight: 600; }
+  h2:first-child { margin-top: 0; }
+  .muted { color: var(--muted); }
+  .small { font-size: 11.5px; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  .stat .k { color: var(--muted); font-size: 11.5px; }
+  .stat .v { font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+  .stat .d { font-size: 11.5px; font-weight: 600; color: var(--ok); }
+  .stat .d.more { color: var(--warn); }
+  .stat.wide { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; }
+  .note { margin: 10px 0 0; color: var(--muted); }
+  .note.warn { color: var(--warn); }
+  ol.steps { list-style: none; padding: 0; margin: 0; }
+  ol.steps li {
+    display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: center; padding: 6px 6px;
+    border-radius: 7px; cursor: pointer; border: 1px solid transparent; position: relative;
+  }
+  ol.steps li:hover { background: var(--hover); }
+  ol.steps li.active { background: var(--hover); border-color: var(--accent); }
+  ol.steps li.linked::before {
+    content: ""; position: absolute; left: 18px; top: -8px; height: 12px; border-left: 2px dotted var(--muted);
+  }
+  .num {
+    width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 11.5px;
+    color: #0b0e14; background: linear-gradient(135deg, var(--c1, #22d3ee), var(--c2, #818cf8));
+  }
+  .step-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .step-sub { color: var(--muted); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .leg { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 11.5px; text-align: right; white-space: nowrap; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: 0; }
+  .tag { display: inline-block; font-size: 10.5px; padding: 0 6px; border-radius: 99px; background: var(--hover); color: var(--muted); margin-left: 4px; font-weight: 500; }
+  .tag.up { color: var(--ok); }
+  .tag.down { color: var(--warn); }
+  ul.plain { margin: 4px 0 0; padding-left: 18px; }
+  #view { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #07090d; }
+  #view canvas { display: block; touch-action: none; }
+  .labels { position: absolute; inset: 0; pointer-events: none; }
+  .badge {
+    min-width: 24px; height: 24px; padding: 0 7px; border-radius: 99px; display: grid; place-items: center;
+    font: 700 11.5px/1 system-ui, sans-serif; color: #0b0e14; white-space: nowrap;
+    background: linear-gradient(135deg, var(--c1), var(--c2)); box-shadow: 0 0 14px color-mix(in srgb, var(--c1) 70%, transparent);
+    transition: transform .2s;
+  }
+  .badge.active { transform: scale(1.3); box-shadow: 0 0 22px var(--c2), 0 0 4px #fff; }
+  .name {
+    font: 11px/1.3 system-ui, sans-serif; padding: 2px 7px; border-radius: 5px; white-space: nowrap; color: var(--glass-text);
+    background: var(--glass); border: 1px solid var(--glass-line); margin-top: 34px;
+  }
+  .name.solo { margin-top: 0; }
+  .sep {
+    font: 600 10.5px/1.3 system-ui, sans-serif; padding: 2px 7px; border-radius: 5px; white-space: nowrap;
+    color: #ffe4e8; background: rgba(76, 17, 30, .85); border: 1px solid #fb7185;
+  }
+  .callout { border: 1px solid var(--warn); border-radius: 8px; padding: 8px 10px; margin: 0 0 12px; font-size: 12px; }
+  .callout b { color: var(--warn); }
+  ul.pairs { list-style: none; padding: 0; margin: 4px 0 0; font-size: 12px; }
+  ul.pairs li { padding: 3px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+  ul.pairs li:last-child { border-bottom: 0; }
+  ul.pairs .m { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .glass {
+    position: absolute; background: var(--glass); color: var(--glass-text); border: 1px solid var(--glass-line);
+    border-radius: 10px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  }
+  .glass button, .glass select { background: transparent; color: var(--glass-text); border-color: var(--glass-line); }
+  .glass button:hover { border-color: #8fb3ff; }
+  .glass label { display: flex; gap: 5px; align-items: center; color: var(--glass-muted); cursor: pointer; }
+  .toolbar { top: 10px; left: 10px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 6px; }
+  .legend { bottom: 10px; left: 10px; padding: 8px 10px; font-size: 11.5px; display: grid; gap: 4px; }
+  .legend .row { display: flex; align-items: center; gap: 6px; color: var(--glass-muted); }
+  .legend .bar { width: 26px; height: 4px; border-radius: 2px; }
+  .player {
+    bottom: 10px; left: 50%; transform: translateX(-50%); padding: 6px 8px; display: flex; gap: 6px; align-items: center;
+    max-width: calc(100% - 20px);
+  }
+  .player .readout { color: var(--glass-muted); font-size: 12px; min-width: 0; max-width: 34ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 4px; }
+  .player .readout b { color: var(--glass-text); }
+  #play { min-width: 92px; font-weight: 600; }
+  #empty { inset: 0; margin: auto; width: min(460px, calc(100% - 32px)); height: fit-content; padding: 18px 20px; display: none; text-align: center; }
+  #empty code { background: rgba(255, 255, 255, .08); padding: 1px 5px; border-radius: 4px; }
+  #fallback { position: absolute; inset: 0; display: none; place-items: center; text-align: center; padding: 24px; color: #cfd5df; }
+  @media (max-width: 1000px) {
+    body { overflow-x: hidden; overflow-y: auto; }
+    main { grid-template-columns: minmax(0, 1fr); }
+    header { padding: 8px 12px; }
+    #status { max-width: 100%; order: 10; flex-basis: 100%; }
+    .toolbar { right: 10px; }
+    #view { height: 68vh; }
+    aside { border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
+    .legend { display: none; }
+    .player { bottom: 8px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Recorrido del gimnasio</h1>
+  <select id="gym-select" aria-label="Gimnasio"></select>
+  <div id="routines" class="seg" role="tablist" aria-label="Rutina"></div>
+  <div id="mode" class="seg" aria-label="Orden">
+    <button data-mode="current">Actual</button>
+    <button data-mode="proposal">Propuesta</button>
+    <button data-mode="compare">Comparar</button>
+  </div>
+  <span class="spacer"></span>
+  <span id="status">Cargando…</span>
+  <button id="reload" title="Volver a leer data/gyms.json (por ejemplo, después de guardar en gym space)">Recargar</button>
+</header>
+<main>
+  <section id="view">
+    <div class="glass toolbar">
+      <button id="top-view">Vista superior</button>
+      <button id="frame">Encuadrar</button>
+      <label><input type="checkbox" id="follow" checked> Seguir</label>
+      <label><input type="checkbox" id="show-graph" checked> Grafo</label>
+      <label><input type="checkbox" id="show-names"> Nombres</label>
+    </div>
+    <div class="glass legend" id="legend"></div>
+    <div class="glass player">
+      <button id="prev" title="Paso anterior (←)" aria-label="Paso anterior">◀</button>
+      <button id="play" title="Recorrer (espacio)">▶ Recorrer</button>
+      <button id="next" title="Paso siguiente (→)" aria-label="Paso siguiente">▶</button>
+      <select id="speed" aria-label="Velocidad">
+        <option value="0.5">0,5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option>
+      </select>
+      <span class="readout" id="readout"></span>
+    </div>
+    <div class="glass" id="empty"></div>
+    <div id="fallback"><p>No se pudo cargar three.js desde el CDN. La página necesita internet para la librería 3D; tus datos siguen solo en este equipo.</p></div>
+  </section>
+  <aside id="panel"><p class="muted">Cargando…</p></aside>
+</main>
+<script>
+  setTimeout(() => { if (!window.__pathStarted) document.getElementById('fallback').style.display = 'grid'; }, 6000);
+</script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { buildModel } from './machine_models.js';
+
+window.__pathStarted = true;
+const token = new URLSearchParams(location.hash.slice(1)).get('token') || '';
+const $ = (selector) => document.querySelector(selector);
+const meters = (value) => `${value.toFixed(1).replace('.', ',')} m`;
+
+// Colores de la escena. La ruta usa un degradado del primer al último paso.
+const BUSY = { 0: '#34d399', 1: '#facc15', 2: '#fb923c', 3: '#f43f5e' };
+const BUSY_NONE = '#64748b';
+const SEPARATED = '#fb7185'; // cerca en línea recta, lejos caminando
+const ROUTE = { current: ['#22d3ee', '#818cf8'], proposal: ['#fbbf24', '#f472b6'], ghost: ['#5b6475', '#5b6475'] };
+const CLUSTERS = ['#38bdf8', '#a78bfa', '#34d399', '#f472b6', '#facc15', '#fb923c', '#2dd4bf', '#f87171'];
+const BASE_Y = 0.14;      // altura de la ruta al llegar a cada máquina
+const TRAVEL_SPEED = 2.4; // metros por segundo a 1×
+const DWELL = 0.9;        // segundos en cada máquina a 1×
+
+function h(tag, attrs = {}, ...children) {
+  const el = document.createElement(tag);
+  for (const [key, val] of Object.entries(attrs)) {
+    if (val == null || val === false) continue;
+    if (key.startsWith('on')) el.addEventListener(key.slice(2), val);
+    else if (key === 'class') el.className = val;
+    else if (key === 'style') el.style.cssText = val;
+    else el.setAttribute(key, val === true ? '' : val);
+  }
+  for (const child of children.flat()) {
+    if (child == null || child === false) continue;
+    el.append(child instanceof Node ? child : String(child));
+  }
+  return el;
+}
+
+function setStatus(text, kind = '') {
+  const el = $('#status');
+  el.textContent = text;
+  el.title = text;
+  el.className = kind;
+}
+
+async function api(path) {
+  const response = await fetch(path, { headers: { 'X-Editor-Token': token } });
+  const data = await response.json().catch(() => ({ error: `Respuesta inválida (${response.status}).` }));
+  if (!response.ok) throw new Error(data.error || `Error ${response.status}.`);
+  return data;
+}
+
+// =====================================================================
+// Escena
+// =====================================================================
+const view = $('#view');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+view.prepend(renderer.domElement);
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.domElement.className = 'labels';
+view.append(labelRenderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x07090d);
+scene.fog = new THREE.Fog(0x07090d, 40, 110);
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 400);
+const orbit = new OrbitControls(camera, renderer.domElement);
+orbit.enableDamping = true;
+orbit.maxPolarAngle = Math.PI / 2 - 0.04;
+scene.add(new THREE.HemisphereLight(0xc8d6ff, 0x1a1d24, 1.5));
+const key = new THREE.DirectionalLight(0xffffff, 2.4);
+key.position.set(18, 30, 22);
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x7aa2ff, 1.2);
+rim.position.set(-20, 12, -18);
+scene.add(rim);
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.75, 0.55, 0.8);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+const staticGroup = new THREE.Group();
+const graphGroup = new THREE.Group();
+const routeGroup = new THREE.Group();
+scene.add(staticGroup, graphGroup, routeGroup);
+
+function clearGroup(group) {
+  const labels = [];
+  group.traverse((node) => {
+    if (node.isCSS2DObject) labels.push(node);
+    if (node.userData.own) {
+      node.geometry?.dispose();
+      node.material?.dispose();
+    }
+  });
+  for (const label of labels) label.removeFromParent(); // Quita también el elemento HTML.
+  group.clear();
+}
+
+function own(object) {
+  object.userData.own = true;
+  return object;
+}
+
+function line(points, color, opacity = 1) {
+  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+  return own(new THREE.Line(geometry, new THREE.LineBasicMaterial({ color, transparent: opacity < 1, opacity })));
+}
+
+/** Curva por puntos con parámetro proporcional a la distancia: t = metros recorridos / total. */
+class Polyline extends THREE.Curve {
+  constructor(points) {
+    super();
+    this.points = points;
+    this.cumulative = [0];
+    for (let i = 1; i < points.length; i += 1) this.cumulative.push(this.cumulative[i - 1] + points[i].distanceTo(points[i - 1]));
+    this.total = this.cumulative[this.cumulative.length - 1] || 1;
+  }
+  getPoint(t, target = new THREE.Vector3()) {
+    const d = Math.min(Math.max(t, 0), 1) * this.total;
+    let lo = 0;
+    let hi = this.cumulative.length - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (this.cumulative[mid] <= d) lo = mid; else hi = mid;
+    }
+    const span = this.cumulative[hi] - this.cumulative[lo] || 1;
+    return target.copy(this.points[lo]).lerp(this.points[hi], (d - this.cumulative[lo]) / span);
+  }
+}
+
+// Brillo que avanza por la ruta: indica el sentido y resalta el tramo activo.
+const ROUTE_VERTEX = `
+  varying vec2 vUv;
+  void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+const ROUTE_FRAGMENT = `
+  uniform float uTime; uniform float uLength; uniform float uOpacity; uniform float uFlow;
+  uniform vec3 uA; uniform vec3 uB; uniform vec2 uActive;
+  varying vec2 vUv;
+  void main() {
+    float s = vUv.x * uLength;
+    float flow = fract(s * 0.55 - uTime * 1.1);
+    float dash = smoothstep(0.0, 0.12, flow) * (1.0 - smoothstep(0.3, 0.48, flow));
+    vec3 color = mix(uA, uB, vUv.x);
+    float focus = 1.0;
+    if (uActive.x >= 0.0) focus = (s >= uActive.x && s <= uActive.y) ? 1.7 : 0.45;
+    gl_FragColor = vec4(color * (0.7 + uFlow * 1.5 * dash) * focus, uOpacity);
+  }`;
+
+function routeMaterial(colors, length, opacity, flow) {
+  return new THREE.ShaderMaterial({
+    vertexShader: ROUTE_VERTEX, fragmentShader: ROUTE_FRAGMENT, transparent: true, depthWrite: false,
+    uniforms: {
+      uTime: { value: 0 }, uLength: { value: length }, uOpacity: { value: opacity }, uFlow: { value: flow },
+      uA: { value: new THREE.Color(colors[0]) }, uB: { value: new THREE.Color(colors[1]) },
+      uActive: { value: new THREE.Vector2(-1, -1) },
+    },
+  });
+}
+
+// =====================================================================
+// Estado
+// =====================================================================
+let data = null;
+let gymIndex = 0;
+let routineIndex = 0;
+let mode = 'proposal';
+let stationObjects = new Map(); // id → { station, group, halo, label, top, point }
+let route = null;               // ruta principal dibujada: { steps, legs, curve, length, material, badges }
+let ghost = null;
+let playhead = -1;
+let playing = false;
+let phase = null;
+let hovered = null;
+let separatedObjects = []; // { pair, label }
+let cameraTween = null;
+const routeMaterials = [];
+
+const gym = () => data.gyms[gymIndex];
+const plan = () => gym().routines[routineIndex];
+const colors = () => ROUTE[mode === 'current' ? 'current' : (plan()?.proposal ? 'proposal' : 'current')];
+const shownOrder = () => {
+  const p = plan();
+  if (!p) return null;
+  return mode === 'current' ? p.current : (p.proposal || p.current);
+};
+const busyColor = (busy) => (busy == null ? BUSY_NONE : BUSY[busy]);
+
+const runner = new THREE.Group();
+runner.add(new THREE.Mesh(new THREE.SphereGeometry(0.16, 24, 16), new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false })));
+const runnerGlow = new THREE.Mesh(new THREE.SphereGeometry(0.34, 24, 16),
+  new THREE.MeshBasicMaterial({ color: 0x9ec5ff, transparent: true, opacity: 0.25, depthWrite: false, toneMapped: false }));
+runner.add(runnerGlow);
+const runnerLight = new THREE.PointLight(0x9ec5ff, 6, 7, 1.6);
+runner.add(runnerLight);
+runner.visible = false;
+scene.add(runner);
+
+// =====================================================================
+// Gimnasio: piso, forma, máquinas y grafo de cercanía
+// =====================================================================
+function buildGym() {
+  clearGroup(staticGroup);
+  stationObjects = new Map();
+  const g = gym();
+  const [w, d] = g.floor;
+  const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x141922, roughness: 0.92, metalness: 0.05 });
+  let floorMesh;
+  if (g.outline && g.outline.length >= 3) {
+    const shape = new THREE.Shape(g.outline.map(([x, z]) => new THREE.Vector2(x, -z)));
+    floorMesh = own(new THREE.Mesh(new THREE.ShapeGeometry(shape), floorMaterial));
+    floorMesh.rotation.x = -Math.PI / 2;
+    const edge = g.outline.map(([x, z]) => new THREE.Vector3(x, 0.02, z));
+    staticGroup.add(line([...edge, edge[0]], 0x8aa0c0, 0.9));
+  } else {
+    floorMesh = own(new THREE.Mesh(new THREE.PlaneGeometry(w, d), floorMaterial));
+    floorMesh.rotation.x = -Math.PI / 2;
+    floorMesh.position.set(w / 2, 0, d / 2);
+  }
+  staticGroup.add(floorMesh);
+  const grid = [];
+  for (let x = 0; x <= w + 1e-6; x += 1) grid.push(new THREE.Vector3(x, 0.005, 0), new THREE.Vector3(x, 0.005, d));
+  for (let z = 0; z <= d + 1e-6; z += 1) grid.push(new THREE.Vector3(0, 0.005, z), new THREE.Vector3(w, 0.005, z));
+  staticGroup.add(own(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(grid),
+    new THREE.LineBasicMaterial({ color: 0x263040, transparent: true, opacity: 0.55 }))));
+
+  const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x4a5a78, transparent: true, opacity: 0.55, roughness: 0.5, emissive: 0x111a2e });
+  for (const wall of g.walls || []) {
+    for (const [[ax, az], [bx, bz]] of wall.pieces) {
+      const length = Math.hypot(bx - ax, bz - az);
+      const mesh = own(new THREE.Mesh(new THREE.BoxGeometry(length, 2.4, 0.12), wallMaterial.clone()));
+      mesh.position.set((ax + bx) / 2, 1.2, (az + bz) / 2);
+      mesh.rotation.y = -Math.atan2(bz - az, bx - ax);
+      staticGroup.add(mesh);
+      staticGroup.add(line([new THREE.Vector3(ax, 2.41, az), new THREE.Vector3(bx, 2.41, bz)], 0x6f8fc7, 0.9));
+    }
+  }
+  wallMaterial.dispose();
+
+  for (const station of g.stations) {
+    if (!station.position) continue;
+    const [x, y, z] = station.position;
+    const [sw, sh, sd] = station.size;
+    const group = buildModel(station.model);
+    group.position.set(x, y, z);
+    group.rotation.y = THREE.MathUtils.degToRad(station.rotation_deg || 0);
+    group.traverse((node) => { node.userData.stationId = station.id; });
+    staticGroup.add(group);
+    const radius = Math.max(sw, sd) / 2 + 0.12;
+    const halo = own(new THREE.Mesh(new THREE.RingGeometry(radius, radius + 0.06, 64),
+      new THREE.MeshBasicMaterial({ color: busyColor(station.busy), transparent: true, opacity: 0.6, depthWrite: false })));
+    halo.rotation.x = -Math.PI / 2;
+    halo.position.set(x, y + 0.02, z);
+    const pad = own(new THREE.Mesh(new THREE.CircleGeometry(radius, 64),
+      new THREE.MeshBasicMaterial({ color: busyColor(station.busy), transparent: true, opacity: 0.035, depthWrite: false })));
+    pad.rotation.x = -Math.PI / 2;
+    pad.position.set(x, y + 0.012, z);
+    staticGroup.add(halo, pad);
+    const el = h('div', { class: 'name' }, station.name);
+    const label = new CSS2DObject(el);
+    label.position.set(x, y + sh + 0.45, z);
+    staticGroup.add(label);
+    stationObjects.set(station.id, { station, group, halo, label, el, top: y + sh, point: new THREE.Vector3(x, y + BASE_Y, z) });
+  }
+  buildGraph();
+}
+
+/** Guiones planos y luminosos entre dos puntos: se ven desde lejos (una línea WebGL mide 1 px). */
+function dashes(a, b, dash = 0.22, gap = 0.16, width = 0.09) {
+  const length = a.distanceTo(b);
+  const count = Math.max(1, Math.floor((length + gap) / (dash + gap)));
+  const mesh = own(new THREE.InstancedMesh(new THREE.PlaneGeometry(dash, width),
+    new THREE.MeshBasicMaterial({ color: SEPARATED, toneMapped: false, side: THREE.DoubleSide }), count));
+  const angle = Math.atan2(b.z - a.z, b.x - a.x);
+  const step = new THREE.Object3D();
+  const offset = (length - (count * dash + (count - 1) * gap)) / 2 + dash / 2;
+  for (let i = 0; i < count; i += 1) {
+    step.position.copy(a).lerp(b, (offset + i * (dash + gap)) / length);
+    step.rotation.set(-Math.PI / 2, 0, -angle); // Acostado: el eje x local queda en dirección a → b.
+    step.updateMatrix();
+    mesh.setMatrixAt(i, step.matrix);
+  }
+  return mesh;
+}
+
+function buildGraph() {
+  clearGroup(graphGroup);
+  const g = gym();
+  const clusterOf = new Map();
+  g.graph.clusters.filter((c) => c.length > 1).forEach((cluster, i) => cluster.forEach((id) => clusterOf.set(id, i)));
+  const onFloor = (object, [x, z]) => new THREE.Vector3(x, object.point.y - BASE_Y + 0.03, z);
+  for (const edge of g.graph.edges) {
+    const a = stationObjects.get(edge.a);
+    const b = stationObjects.get(edge.b);
+    if (!a || !b) continue;
+    const color = CLUSTERS[(clusterOf.get(edge.a) ?? 0) % CLUSTERS.length];
+    const strength = 1 - edge.meters / (g.graph.near_meters * 1.15);
+    // Si la unión rodea una pared, se dibuja por donde se camina (la puerta), no atravesándola.
+    const floor = edge.path || [[a.point.x, a.point.z], [b.point.x, b.point.z]];
+    graphGroup.add(line(floor.map((p) => onFloor(a, p)), color, 0.25 + 0.5 * strength));
+  }
+  separatedObjects = [];
+  for (const pair of g.separated || []) {
+    const a = stationObjects.get(pair.a);
+    const b = stationObjects.get(pair.b);
+    if (!a || !b) continue;
+    graphGroup.add(dashes(onFloor(a, [a.point.x, a.point.z]).setY(a.point.y - BASE_Y + 0.05),
+      onFloor(b, [b.point.x, b.point.z]).setY(b.point.y - BASE_Y + 0.05)));
+    const walking = pair.walking_m == null ? 'sin camino' : `${meters(pair.walking_m)} caminando`;
+    const el = h('div', { class: 'sep' }, `✕ ${meters(pair.straight_m)} en línea recta · ${walking}`);
+    const label = new CSS2DObject(el);
+    label.position.copy(a.point).lerp(b.point, 0.5).setY(a.point.y + 0.3);
+    label.visible = false;
+    graphGroup.add(label);
+    separatedObjects.push({ pair, label });
+  }
+  graphGroup.visible = $('#show-graph').checked;
+}
+
+// =====================================================================
+// Ruta: arcos entre estaciones (o el camino entre paredes si llega)
+// =====================================================================
+function floorPolyline(points) {
+  const lengths = [0];
+  for (let i = 1; i < points.length; i += 1) lengths.push(lengths[i - 1] + Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]));
+  const total = lengths[lengths.length - 1];
+  return {
+    total,
+    at(d) {
+      let i = 1;
+      while (i < lengths.length - 1 && lengths[i] < d) i += 1;
+      const span = lengths[i] - lengths[i - 1] || 1;
+      const t = Math.min(Math.max((d - lengths[i - 1]) / span, 0), 1);
+      return [points[i - 1][0] + (points[i][0] - points[i - 1][0]) * t, points[i - 1][1] + (points[i][1] - points[i - 1][1]) * t];
+    },
+  };
+}
+
+function makeRoute(steps, palette, { opacity = 0.95, radius = 0.07, flow = 1, badges = true } = {}) {
+  const points = [];
+  const legs = [];
+  let distance = 0;
+  let previous = null;
+  steps.forEach((step, index) => {
+    const target = stationObjects.get(step.station_id);
+    if (!target) { legs.push({ s0: distance, s1: distance }); return; }
+    if (!previous) {
+      points.push(target.point.clone());
+      legs.push({ s0: 0, s1: 0 });
+      previous = target;
+      return;
+    }
+    const a = previous.point;
+    const b = target.point;
+    const s0 = distance;
+    if (a.distanceTo(b) > 0.01) {
+      const walking = step.path && step.path.length >= 2;
+      const poly = floorPolyline(walking ? step.path : [[a.x, a.z], [b.x, b.z]]);
+      // Por puertas el arco queda bajo las paredes (2,4 m) para que se lea como caminar, no como saltarlas.
+      const lift = Math.min(walking ? 1.1 : 2.6, 0.45 + 0.22 * poly.total);
+      const count = Math.max(10, Math.ceil(poly.total * 7));
+      for (let k = 1; k <= count; k += 1) {
+        const u = k / count;
+        const [x, z] = poly.at(u * poly.total);
+        const point = new THREE.Vector3(x, a.y + (b.y - a.y) * u + Math.sin(Math.PI * u) * lift, z);
+        distance += point.distanceTo(points[points.length - 1]);
+        points.push(point);
+      }
+    }
+    legs.push({ s0, s1: distance });
+    previous = target;
+  });
+  const result = { steps, legs, curve: null, length: distance, material: null, badges: new Map(), palette };
+  if (points.length >= 2) {
+    const curve = new Polyline(points);
+    result.curve = curve;
+    result.length = curve.total;
+    result.material = routeMaterial(palette, curve.total, opacity, flow);
+    routeMaterials.push(result.material);
+    const tube = own(new THREE.Mesh(new THREE.TubeGeometry(curve, Math.min(4000, Math.ceil(curve.total * 12) + 8), radius, 10, false), result.material));
+    routeGroup.add(tube);
+    routeGroup.add(line(points.map((p) => new THREE.Vector3(p.x, p.y - (p.y - BASE_Y) - BASE_Y + 0.035, p.z)), palette[0], 0.28 * opacity));
+  }
+  if (badges) {
+    const byStation = new Map();
+    steps.forEach((step, i) => byStation.set(step.station_id, [...(byStation.get(step.station_id) || []), i]));
+    for (const [id, indices] of byStation) {
+      const target = stationObjects.get(id);
+      if (!target) continue;
+      const t = indices[0] / Math.max(1, steps.length - 1);
+      const color = new THREE.Color(palette[0]).lerp(new THREE.Color(palette[1]), t).getStyle();
+      const el = h('div', { class: 'badge', style: `--c1:${color};--c2:${palette[1]}` }, indices.map((i) => i + 1).join(' · '));
+      const label = new CSS2DObject(el);
+      label.position.set(target.point.x, target.top + 0.45, target.point.z);
+      routeGroup.add(label);
+      result.badges.set(id, el);
+    }
+  }
+  return result;
+}
+
+function buildRoute() {
+  clearGroup(routeGroup);
+  routeMaterials.length = 0;
+  route = null;
+  ghost = null;
+  const p = plan();
+  stop();
+  if (p && p.current) {
+    if (mode === 'compare' && p.proposal) ghost = makeRoute(p.current.steps, ROUTE.ghost, { opacity: 0.45, radius: 0.04, flow: 0.25, badges: false });
+    route = makeRoute(shownOrder().steps, colors());
+  }
+  setPlayhead(-1);
+  updateNames();
+}
+
+// =====================================================================
+// Recorrido paso a paso
+// =====================================================================
+function routePoint(s) {
+  return route.curve ? route.curve.getPoint(s / route.length) : stationObjects.get(route.steps[0].station_id).point.clone();
+}
+
+function setPlayhead(index, { focus = false } = {}) {
+  playhead = index;
+  const steps = route?.steps || [];
+  for (const [id, el] of route?.badges || []) el.classList.toggle('active', index >= 0 && steps[index]?.station_id === id);
+  document.querySelectorAll('ol.steps li').forEach((li) => li.classList.toggle('active', Number(li.dataset.index) === index));
+  if (route?.material) route.material.uniforms.uActive.value.set(index > 0 ? route.legs[index].s0 : -1, index > 0 ? route.legs[index].s1 : -1);
+  if (index < 0 || !route) {
+    runner.visible = false;
+    renderReadout();
+    return;
+  }
+  runner.visible = true;
+  runner.position.copy(routePoint(route.legs[index].s1));
+  renderReadout();
+  document.querySelector(`ol.steps li[data-index="${index}"]`)?.scrollIntoView({ block: 'nearest' });
+  if (focus) focusOn(stationObjects.get(steps[index].station_id)?.point);
+  updateNames();
+}
+
+function renderReadout() {
+  const steps = route?.steps || [];
+  $('#prev').disabled = !steps.length || playhead <= 0;
+  $('#next').disabled = !steps.length || playhead >= steps.length - 1;
+  $('#play').disabled = !steps.length;
+  $('#play').textContent = playing ? '❚❚ Pausa' : (playhead >= steps.length - 1 && playhead >= 0 ? '↺ De nuevo' : '▶ Recorrer');
+  const step = steps[playhead];
+  $('#readout').replaceChildren(...(step
+    ? [h('b', {}, `${playhead + 1}/${steps.length}`), ` ${step.title}`, step.leg_m ? ` · +${meters(step.leg_m)}` : '']
+    : [steps.length ? `${steps.length} pasos · ${meters(shownOrder().walk_m)}` : 'Sin recorrido']));
+}
+
+function speed() { return Number($('#speed').value) || 1; }
+
+function play() {
+  if (!route?.steps.length) return;
+  if (playing) { stop(); return; }
+  if (playhead < 0 || playhead >= route.steps.length - 1) setPlayhead(0, { focus: !$('#follow').checked });
+  playing = true;
+  phase = { kind: 'dwell', until: performance.now() + (DWELL * 1000) / speed() };
+  renderReadout();
+}
+
+function stop() {
+  playing = false;
+  phase = null;
+  if (route) renderReadout();
+}
+
+function advance(now) {
+  if (!playing || !phase) return;
+  if (phase.kind === 'dwell') {
+    if (now < phase.until) return;
+    if (playhead >= route.steps.length - 1) { stop(); return; }
+    const leg = route.legs[playhead + 1];
+    const duration = Math.max(0.35, (leg.s1 - leg.s0) / TRAVEL_SPEED) * 1000 / speed();
+    phase = { kind: 'travel', to: playhead + 1, start: now, duration, s0: leg.s0, s1: leg.s1 };
+    if (route.material) route.material.uniforms.uActive.value.set(leg.s0, leg.s1);
+    return;
+  }
+  const t = Math.min(1, (now - phase.start) / phase.duration);
+  const eased = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+  runner.position.copy(routePoint(phase.s0 + (phase.s1 - phase.s0) * eased));
+  if (t >= 1) {
+    setPlayhead(phase.to);
+    phase = { kind: 'dwell', until: now + (DWELL * 1000) / speed() };
+  }
+}
+
+function focusOn(point, distance = null) {
+  if (!point) return;
+  const offset = camera.position.clone().sub(orbit.target);
+  const length = distance ?? THREE.MathUtils.clamp(offset.length(), 6, 14);
+  offset.setLength(length);
+  const target = new THREE.Vector3(point.x, point.y, point.z);
+  cameraTween = { start: performance.now(), duration: 650, fromTarget: orbit.target.clone(), toTarget: target,
+    fromCamera: camera.position.clone(), toCamera: target.clone().add(offset) };
+}
+
+function frame(top = false) {
+  const box = new THREE.Box3();
+  for (const object of stationObjects.values()) box.expandByPoint(object.point);
+  if (box.isEmpty()) {
+    const [w, d] = gym().floor;
+    box.set(new THREE.Vector3(0, 0, 0), new THREE.Vector3(w, 0, d));
+  }
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  center.y = 0;
+  // Esfera que contiene las máquinas, ajustada al campo de visión más angosto (vertical u horizontal).
+  const radius = Math.hypot(Math.max(size.x, 4), Math.max(size.z, 4)) / 2 + 1.5;
+  const vertical = THREE.MathUtils.degToRad(camera.fov);
+  const horizontal = 2 * Math.atan(Math.tan(vertical / 2) * camera.aspect);
+  const distance = radius / Math.sin(Math.min(vertical, horizontal) / 2);
+  const direction = top ? new THREE.Vector3(0, 1, 0.001) : new THREE.Vector3(0.3, 0.72, 0.8);
+  const toCamera = center.clone().add(direction.normalize().multiplyScalar(distance * (top ? 0.95 : 0.9)));
+  cameraTween = { start: performance.now(), duration: 700, fromTarget: orbit.target.clone(), toTarget: center,
+    fromCamera: camera.position.clone(), toCamera };
+}
+
+// =====================================================================
+// Panel
+// =====================================================================
+function renderRoutineTabs() {
+  $('#routines').replaceChildren(...gym().routines.map((r, i) => h('button', {
+    class: i === routineIndex ? 'on' : '', role: 'tab', title: r.title,
+    onclick: () => { routineIndex = i; refresh(); },
+  }, r.title.split(' - ')[0].trim() || r.title)));
+}
+
+function renderModes() {
+  const p = plan();
+  for (const button of document.querySelectorAll('#mode button')) {
+    const needsProposal = button.dataset.mode !== 'current';
+    button.disabled = !p?.current || (needsProposal && !p.proposal);
+    const shown = mode !== 'current' && !p?.proposal ? 'current' : mode;
+    button.classList.toggle('on', button.dataset.mode === shown);
+  }
+}
+
+function stepItems(order, palette) {
+  const p = plan();
+  const before = new Map();
+  if (mode === 'compare' && p.proposal) {
+    const used = new Set();
+    p.current.steps.forEach((step, i) => {
+      if (!used.has(step.exercise_template_id)) { before.set(step.exercise_template_id, i + 1); used.add(step.exercise_template_id); }
+    });
+  }
+  return order.steps.map((step, i) => {
+    const t = i / Math.max(1, order.steps.length - 1);
+    const color = new THREE.Color(palette[0]).lerp(new THREE.Color(palette[1]), t).getStyle();
+    const linked = i > 0 && order.steps[i - 1].block === step.block;
+    const old = before.get(step.exercise_template_id);
+    const moved = old && old !== i + 1;
+    return h('li', { 'data-index': String(i), class: linked ? 'linked' : '', onclick: () => { stop(); setPlayhead(i, { focus: true }); } },
+      h('span', { class: 'num', style: `--c1:${color};--c2:${palette[1]}` }, String(i + 1)),
+      h('div', { style: 'min-width:0' },
+        h('div', { class: 'step-title', title: step.title }, step.title),
+        h('div', { class: 'step-sub' },
+          h('span', { class: 'dot', style: `background:${busyColor(step.busy)}` }),
+          step.station !== step.title ? step.station : (step.busy == null ? 'sin dato de ocupación' : data.busy_labels[step.busy]),
+          linked ? h('span', { class: 'tag' }, 'superserie') : null,
+          moved ? h('span', { class: `tag ${old > i + 1 ? 'up' : 'down'}` }, `antes ${old}`) : null)),
+      h('span', { class: 'leg' }, i === 0 ? 'inicio' : `+${meters(step.leg_m)}`));
+  });
+}
+
+function renderPanel() {
+  const g = gym();
+  const p = plan();
+  const panel = $('#panel');
+  const parts = [];
+  if (!p) {
+    parts.push(h('p', { class: 'muted' }, 'No hay rutinas en data/snapshot.json.'));
+  } else {
+    parts.push(h('h2', {}, p.title));
+    if (p.current) {
+      const stats = [h('div', { class: 'stat' }, h('div', { class: 'k' }, 'Orden actual'), h('div', { class: 'v' }, meters(p.current.walk_m)))];
+      if (p.proposal) {
+        const saved = p.current.walk_m - p.proposal.walk_m;
+        const pct = p.current.walk_m ? Math.round((saved / p.current.walk_m) * 100) : 0;
+        stats.push(h('div', { class: 'stat' }, h('div', { class: 'k' }, 'Propuesta'), h('div', { class: 'v' }, meters(p.proposal.walk_m)),
+          h('div', { class: `d ${saved < -0.05 ? 'more' : ''}` }, saved > 0.05 ? `−${meters(saved)} (−${pct} %)` : (saved < -0.05 ? `+${meters(-saved)} caminando` : 'igual distancia'))));
+        stats.push(h('div', { class: 'stat wide' }, h('span', { class: 'k' }, 'Bloques que cambian de lugar'), h('b', {}, String(p.proposal.moved))));
+      }
+      parts.push(h('div', { class: 'stats' }, stats));
+      if (p.proposal && p.proposal.walk_m > p.current.walk_m - 0.05) {
+        parts.push(h('p', { class: 'note' }, 'La propuesta camina igual o más: adelanta máquinas que suelen estar ocupadas.'));
+      }
+    }
+    if (p.note) parts.push(h('p', { class: `note ${p.current ? '' : 'warn'}` }, p.note));
+    if (p.missing?.length) parts.push(h('p', { class: 'note warn' }, 'Falta ubicar en gym space:'), h('ul', { class: 'plain small' }, p.missing.map((m) => h('li', {}, m))));
+    const order = shownOrder();
+    if (order) {
+      const label = mode === 'current' || !p.proposal ? 'Pasos · orden actual' : 'Pasos · propuesta';
+      parts.push(h('h2', {}, label), h('ol', { class: 'steps' }, stepItems(order, colors())));
+    }
+  }
+  const graph = g.graph;
+  const names = graph.names;
+  if (!g.outline && graph.placed.length) {
+    parts.unshift(h('div', { class: 'callout' }, h('b', {}, 'Sin paredes dibujadas. '),
+      'Las distancias son en línea recta: dos máquinas pegadas a ambos lados de una pared cuentan como cercanas. '
+      + 'Dibujá contorno, paredes y puertas en gym space → Forma del gimnasio, guardá y tocá Recargar.'));
+  }
+  const groups = graph.clusters.filter((c) => c.length > 1);
+  const alone = graph.clusters.filter((c) => c.length === 1).map((c) => names[c[0]]);
+  parts.push(h('h2', {}, 'Grafo de cercanía'),
+    h('p', { class: 'small', style: 'margin:0' },
+      `${graph.placed.length} de ${Object.keys(names).length} estaciones ubicadas · ${graph.edges.length} uniones a ${meters(graph.near_meters)} o menos`,
+      graph.walking ? ' caminando por la forma del gimnasio.' : ' en línea recta.'),
+    groups.length ? h('p', { class: 'small muted', style: 'margin:4px 0 0' }, `${groups.length} grupo(s) de máquinas cercanas.`) : null,
+    alone.length ? h('p', { class: 'small muted', style: 'margin:4px 0 0' }, `Aisladas: ${alone.join(', ')}.`) : null,
+    graph.unplaced.length ? h('p', { class: 'small muted', style: 'margin:4px 0 0' }, `Sin ubicar: ${graph.unplaced.map((id) => names[id]).join(', ')}.`) : null,
+    graph.outside?.length ? h('p', { class: 'small', style: 'margin:4px 0 0;color:var(--warn)' }, `Fuera del contorno: ${graph.outside.map((id) => names[id]).join(', ')}.`) : null,
+    g.busy_unknown.length ? h('p', { class: 'small muted', style: 'margin:4px 0 0' }, `${g.busy_unknown.length} sin dato de ocupación (se tratan como libres).`) : null);
+  if (g.separated?.length) {
+    parts.push(h('h2', {}, 'Al lado, pero separadas por pared'),
+      h('p', { class: 'small muted', style: 'margin:0' }, 'Cerca en línea recta, lejos caminando: no cuentan como cercanas ni para el orden propuesto.'),
+      h('ul', { class: 'pairs' }, g.separated.map((pair) => h('li', {
+        onclick: () => focusOn(stationObjects.get(pair.a).point.clone().lerp(stationObjects.get(pair.b).point, 0.5)),
+        onmouseenter: () => { hovered = pair.a; updateNames(); },
+        onmouseleave: () => { hovered = null; updateNames(); },
+      }, `${names[pair.a]} ↔ ${names[pair.b]} `,
+      h('span', { class: 'm' }, `${meters(pair.straight_m)} → ${pair.walking_m == null ? 'sin camino' : meters(pair.walking_m)}`)))));
+  }
+  parts.push(h('p', { class: 'small muted', style: 'margin-top:18px' },
+    'La propuesta solo considera metros caminados, ocupación y cercanía al orden actual; no evalúa prioridades de entrenamiento. '
+    + 'Para aplicarla: routine export → editar → routine apply.'));
+  panel.replaceChildren(...parts.filter(Boolean));
+}
+
+function renderLegend() {
+  const g = gym();
+  const palette = colors();
+  $('#legend').replaceChildren(...[
+    h('div', { class: 'row' }, h('span', { class: 'bar', style: `background:linear-gradient(90deg,${palette[0]},${palette[1]})` }), mode === 'current' || !plan()?.proposal ? 'Orden actual' : 'Propuesta'),
+    mode === 'compare' && plan()?.proposal ? h('div', { class: 'row' }, h('span', { class: 'bar', style: `background:${ROUTE.ghost[0]}` }), 'Orden actual') : null,
+    h('div', { class: 'row' }, h('span', { class: 'bar', style: `background:${CLUSTERS[0]};height:2px;opacity:.7` }), `Cercanas (≤ ${meters(g.graph.near_meters)}${g.graph.walking ? ' caminando' : ''})`),
+    g.separated?.length ? h('div', { class: 'row' }, h('span', { class: 'bar', style: `background:repeating-linear-gradient(90deg,${SEPARATED} 0 5px,transparent 5px 9px);height:2px` }), 'Al lado, separadas por pared') : null,
+    ...[0, 1, 2, 3].map((b) => h('div', { class: 'row' }, h('span', { class: 'dot', style: `background:${BUSY[b]}` }), data.busy_labels[b])),
+    h('div', { class: 'row' }, h('span', { class: 'dot', style: `background:${BUSY_NONE}` }), 'sin dato')].filter(Boolean));
+}
+
+function renderEmpty() {
+  const g = gym();
+  const empty = $('#empty');
+  if (g.graph.placed.length || (g.graph.outside || []).length) { empty.style.display = 'none'; return; }
+  empty.style.display = 'block';
+  empty.replaceChildren(
+    h('p', { style: 'margin:0 0 8px;font-weight:600;font-size:14px' }, `Todavía no hay máquinas ubicadas en ${g.name}.`),
+    h('p', { style: 'margin:0;color:var(--glass-muted)' }, 'Ubicalas con ', h('code', {}, 'python3 -m fitness_agent gym space'),
+      ', guardá y tocá Recargar. El recorrido aparece cuando cada ejercicio de la rutina tiene su máquina en el plano.'));
+}
+
+function updateNames() {
+  const all = $('#show-names').checked;
+  for (const [id, object] of stationObjects) {
+    object.label.visible = all || id === hovered;
+    object.el.classList.toggle('solo', !route?.badges.has(id));
+  }
+  const active = route?.steps[playhead]?.station_id;
+  for (const { pair, label } of separatedObjects) {
+    label.visible = [hovered, active].some((id) => id && (pair.a === id || pair.b === id));
+  }
+}
+
+function refresh() {
+  if (!plan()?.proposal && mode !== 'current') mode = 'proposal'; // Se resuelve como "actual" al no haber propuesta.
+  renderRoutineTabs();
+  renderModes();
+  buildRoute();
+  renderPanel();
+  renderLegend();
+  renderReadout();
+}
+
+function selectGym(index) {
+  gymIndex = index;
+  routineIndex = Math.min(routineIndex, Math.max(0, gym().routines.length - 1));
+  $('#gym-select').replaceChildren(...data.gyms.map((g, i) => h('option', { value: String(i) }, g.name)));
+  $('#gym-select').value = String(index);
+  buildGym();
+  renderEmpty();
+  refresh();
+}
+
+// =====================================================================
+// Interacción
+// =====================================================================
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let down = null;
+
+function stationAt(event) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
+  raycaster.setFromCamera(pointer, camera);
+  const hit = raycaster.intersectObjects([...stationObjects.values()].map((o) => o.group), true)[0];
+  return hit?.object.userData.stationId || null;
+}
+
+renderer.domElement.addEventListener('pointermove', (event) => {
+  if (event.buttons) return;
+  const id = stationAt(event);
+  if (id === hovered) return;
+  hovered = id;
+  renderer.domElement.style.cursor = id ? 'pointer' : '';
+  updateNames();
+});
+renderer.domElement.addEventListener('pointerdown', (event) => { down = [event.clientX, event.clientY]; cameraTween = null; });
+renderer.domElement.addEventListener('pointerup', (event) => {
+  if (!down || Math.hypot(event.clientX - down[0], event.clientY - down[1]) > 4) return;
+  const id = stationAt(event);
+  if (!id) return;
+  const index = route?.steps.findIndex((step) => step.station_id === id) ?? -1;
+  if (index >= 0) { stop(); setPlayhead(index, { focus: true }); } else focusOn(stationObjects.get(id).point);
+});
+
+$('#play').addEventListener('click', play);
+$('#prev').addEventListener('click', () => { stop(); setPlayhead(Math.max(0, playhead - 1), { focus: true }); });
+$('#next').addEventListener('click', () => { stop(); setPlayhead(Math.min(route.steps.length - 1, playhead + 1), { focus: true }); });
+$('#top-view').addEventListener('click', () => frame(true));
+$('#frame').addEventListener('click', () => frame(false));
+$('#show-graph').addEventListener('change', (event) => { graphGroup.visible = event.target.checked; });
+$('#show-names').addEventListener('change', updateNames);
+$('#gym-select').addEventListener('change', (event) => { selectGym(Number(event.target.value)); frame(); });
+for (const button of document.querySelectorAll('#mode button')) {
+  button.addEventListener('click', () => { mode = button.dataset.mode; refresh(); });
+}
+$('#reload').addEventListener('click', () => load(true));
+window.addEventListener('keydown', (event) => {
+  if (event.target.closest('input, select, textarea') || !route) return;
+  if (event.key === ' ') { event.preventDefault(); play(); }
+  if (event.key === 'ArrowRight') { event.preventDefault(); $('#next').click(); }
+  if (event.key === 'ArrowLeft') { event.preventDefault(); $('#prev').click(); }
+  if (event.key === 'Escape') { stop(); setPlayhead(-1); }
+});
+
+new ResizeObserver(() => {
+  const { clientWidth: width, clientHeight: height } = view;
+  if (!width || !height) return;
+  renderer.setSize(width, height);
+  composer.setSize(width, height);
+  labelRenderer.setSize(width, height);
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+}).observe(view);
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const now = performance.now();
+  const time = clock.getElapsedTime();
+  for (const material of routeMaterials) material.uniforms.uTime.value = time;
+  advance(now);
+  if (cameraTween) {
+    const t = Math.min(1, (now - cameraTween.start) / cameraTween.duration);
+    const eased = 1 - (1 - t) ** 3;
+    orbit.target.lerpVectors(cameraTween.fromTarget, cameraTween.toTarget, eased);
+    camera.position.lerpVectors(cameraTween.fromCamera, cameraTween.toCamera, eased);
+    if (t >= 1) cameraTween = null;
+  } else if (playing && $('#follow').checked && runner.visible) {
+    const delta = runner.position.clone().setY(0).sub(orbit.target.clone().setY(0)).multiplyScalar(0.06);
+    orbit.target.add(delta);
+    camera.position.add(delta);
+  }
+  runnerGlow.scale.setScalar(1 + 0.18 * Math.sin(time * 5));
+  const active = route?.steps[playhead]?.station_id;
+  for (const [id, object] of stationObjects) {
+    const pulse = id === active ? 1 + 0.1 * Math.sin(time * 6) : 1;
+    object.halo.scale.setScalar(pulse);
+    object.halo.material.opacity = id === active ? 1 : 0.6;
+  }
+  orbit.update();
+  composer.render();
+  labelRenderer.render(scene, camera);
+});
+
+// =====================================================================
+// Arranque
+// =====================================================================
+async function load(keep = false) {
+  const previous = keep && data ? { gym: gym().id, routine: plan()?.routine_id } : null;
+  try {
+    setStatus('Leyendo data/gyms.json…');
+    data = await api('/api/path');
+    if (!data.gyms.length) throw new Error('data/gyms.json no tiene gimnasios.');
+    let index = 0;
+    const wanted = new URLSearchParams(location.hash.slice(1));
+    if (!previous && wanted.get('routine')) {
+      const prefix = wanted.get('routine').toLowerCase();
+      routineIndex = Math.max(0, data.gyms[0].routines.findIndex((r) => r.title.toLowerCase().startsWith(prefix)));
+    }
+    if (!previous && ['current', 'proposal', 'compare'].includes(wanted.get('mode'))) mode = wanted.get('mode');
+    if (previous) {
+      index = Math.max(0, data.gyms.findIndex((g) => g.id === previous.gym));
+      routineIndex = Math.max(0, data.gyms[index].routines.findIndex((r) => r.routine_id === previous.routine));
+    }
+    selectGym(index);
+    if (!previous) {
+      await new Promise(requestAnimationFrame); // Que el ResizeObserver fije la proporción antes de encuadrar.
+      frame(wanted.get('view') === 'top');
+    }
+    const g = gym();
+    const ready = g.routines.filter((r) => r.current).length;
+    setStatus(`${g.graph.placed.length} máquinas ubicadas · ${ready} de ${g.routines.length} rutinas con recorrido.`);
+  } catch (error) {
+    setStatus(error.message, 'error');
+    $('#panel').replaceChildren(h('p', { class: 'note warn' }, error.message));
+  }
+}
+
+await load();
+</script>
+</body>
+</html>
