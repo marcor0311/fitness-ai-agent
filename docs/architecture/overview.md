@@ -28,7 +28,7 @@ El receptor valida el aviso y lo guarda en D1 antes del 200 que Hevy espera dent
 - **Persistir antes de confirmar:** recuperar procesos interrumpidos porque el evento ya está guardado.
 - **Solo entrenamientos nuevos en la nube:** mantener separada la descarga local completa.
 
-El cron recupera avisos ya guardados; no descubre los que nunca llegaron. Las ediciones y eliminaciones posteriores no se sincronizan por este webhook. Todavía no hay descarga desde Cloudflare al CLI, recomendaciones automáticas ni un agente de IA en ejecución.
+El cron recupera avisos ya guardados; no descubre los que nunca llegaron. Las ediciones y eliminaciones posteriores no se sincronizan por este webhook. `pull` descarga al CLI lo guardado en D1 mediante la lectura privada y `report` genera localmente el reporte calculado de cada entrenamiento. Todavía no hay interpretación con IA, notificaciones ni ejecución de reportes en la nube.
 
 ## Editar los diagramas
 

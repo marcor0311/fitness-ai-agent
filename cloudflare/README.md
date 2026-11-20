@@ -25,7 +25,7 @@ https://fitness-hevy-webhook.fitness-hevy-webhook.workers.dev/webhooks/hevy
 
 Base D1 creada y migrada, secretos configurados y recuperación de pendientes activa cada cinco minutos. Se verificaron por HTTPS el estado público, el rechazo de lectura sin autorización, la lectura privada y el rechazo de avisos inválidos. La URL y el encabezado de la suscripción persistieron en Hevy después de recargar.
 
-**Recorrido completo verificado con un entrenamiento nuevo de prueba creado por el usuario en Hevy:** aviso recibido, estado `processed`, detalle guardado y lectura privada correcta. Una reentrega controlada respondió 200 en 0,158 s y no duplicó la sesión. No se importó historial anterior. Evidencia y secretos permanecen en `../data/`, excluido de Git; la configuración para Hevy está en `../data/hevy-webhook.txt`.
+**Recorrido completo verificado con un entrenamiento nuevo de prueba creado por el usuario en Hevy:** aviso recibido, estado `processed`, detalle guardado y lectura privada correcta. Una reentrega controlada respondió 200 en 0,158 s y no duplicó la sesión. No se importó historial anterior. Los archivos temporales de la prueba se eliminaron tras la verificación. Los secretos permanecen en `../data/`, excluido de Git; la configuración para Hevy está en `../data/hevy-webhook.txt`.
 
 La prueba detectó y permitió corregir una incompatibilidad de consulta: Workers requiere `redirect: "manual"`, con rechazo explícito de respuestas 3xx mediante `response.ok`; `redirect: "error"` provoca un error antes de enviar la solicitud. La corrección está desplegada y cubierta por pruebas.
 
@@ -93,7 +93,7 @@ Devuelve:
 }
 ```
 
-Devuelve hasta 50 entrenamientos por página, en orden de incorporación a D1. Para continuar, enviar `?cursor=<cursor-devuelto>`. Guardar el cursor solo después de guardar localmente los resultados. No existe un comando Python de descarga desde Cloudflare todavía; esta API permite conectarlo cuando se necesite.
+Devuelve hasta 50 entrenamientos por página, en orden de incorporación a D1. Para continuar, enviar `?cursor=<cursor-devuelto>`. Guardar el cursor solo después de guardar localmente los resultados. `python3 -m fitness_agent pull`, desde la raíz, aplica ese orden. La lectura necesita un User-Agent propio: Cloudflare responde 403 al predeterminado de Python.
 
 `GET /health` es público y solo confirma que el Worker responde; no verifica Hevy, D1 ni los secretos. Los datos y los estados internos no son públicos. No se habilita CORS para aplicaciones externas.
 
